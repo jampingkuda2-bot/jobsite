@@ -17,46 +17,70 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const res = await fetch("/api/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (!res.ok) return setError(data.error || "Gagal mengirim kode");
-    setStage("otp");
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || `Gagal mengirim kode (error ${res.status})`);
+        return;
+      }
+      setStage("otp");
+    } catch (err) {
+      setError("Tidak bisa terhubung ke server. Coba lagi.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function checkOtp(e) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const res = await fetch("/api/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code }),
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (!res.ok) return setError(data.error || "Kode salah");
-    setStage("credentials");
+    try {
+      const res = await fetch("/api/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || `Kode salah (error ${res.status})`);
+        return;
+      }
+      setStage("credentials");
+    } catch (err) {
+      setError("Tidak bisa terhubung ke server. Coba lagi.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function finishRegister(e) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const res = await fetch("/api/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code, username, password }),
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (!res.ok) return setError(data.error || "Gagal mendaftar");
-    router.push("/dashboard");
-    router.refresh();
+    try {
+      const res = await fetch("/api/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code, username, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || `Gagal mendaftar (error ${res.status})`);
+        return;
+      }
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err) {
+      setError("Tidak bisa terhubung ke server. Coba lagi.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

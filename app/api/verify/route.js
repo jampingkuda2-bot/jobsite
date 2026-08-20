@@ -3,6 +3,7 @@ import { query } from "@/lib/db";
 import { signSession, setUserCookie } from "@/lib/auth";
 
 export async function POST(req) {
+  try {
   const { email, code, username, password } = await req.json();
 
   if (!email || !code) {
@@ -74,5 +75,11 @@ export async function POST(req) {
   setUserCookie(token);
 
   return Response.json({ ok: true, step: "done" });
+  } catch (e) {
+    console.error("Error di /api/verify:", e);
+    return Response.json(
+      { error: "Terjadi kesalahan server. Cek koneksi database." },
+      { status: 500 }
+    );
+  }
 }
-  

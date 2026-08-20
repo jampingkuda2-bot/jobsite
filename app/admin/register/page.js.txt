@@ -1,0 +1,145 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const [stage, setStage] = useState("email"); // email -> otp -> credentials
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function sendOtp(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    const res = await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) return setError(data.error || "Gagal mengirim kode");
+    setStage("otp");
+  }
+
+  async function checkOtp(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    const res = await fetch("/api/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) return setError(data.error || "Kode salah");
+    setStage("credentials");
+  }
+
+  async function finishRegister(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    const res = await fetch("/api/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code, username, password }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) return setError(data.error || "Gagal mendaftar");
+    router.push("/dashboard");
+    router.refresh();
+  }
+
+  return (
+    <div className="wrap">
+      <h1>Daftar akun</h1>
+      <p className="muted" style={{ marginBottom: 20 }}>
+        Kerjakan tugas, kumpulkan saldo, tarik ke DANA kapan saja.
+      </p>
+
+      {error && <div className="error">{error}</div>}
+
+      {stage === "email" && (
+        <form onSubmit={sendOtp} className="card">
+          <div className="field">
+            <label>Alamat email</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="nama@email.com"
+            />
+          </div>
+          <button disabled={loading}>
+            {loading ? "Mengirim..." : "Kirim kode verifikasi"}
+          </button>
+        </form>
+      )}
+
+      {stage === "otp" && (
+        <form onSubmit={checkOtp} className="card">
+          <p className="muted">
+            Kode verifikasi sudah dikirim ke <b>{email}</b>. Cek inbox atau folder spam.
+          </p>
+          <div className="field">
+            <label>Kode verifikasi (6 digit)</label>
+            <input
+              required
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="123456"
+            />
+          </div>
+          <button disabled={loading}>
+            {loading ? "Memeriksa..." : "Verifikasi"}
+          </button>
+        </form>
+      )}
+
+      {stage === "credentials" && (
+        <form onSubmit={finishRegister} className="card">
+          <p className="muted">Email terverifikasi. Buat username & password untuk login.</p>
+          <div className="field">
+            <label>Username</label>
+            <input
+              required
+              minLength={3}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="username_kamu"
+            />
+          </div>
+          <div className="field">
+            <label>Password</label>
+            <input
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Minimal 6 karakter"
+            />
+          </div>
+          <button disabled={loading}>
+            {loading ? "Menyimpan..." : "Simpan & masuk"}
+          </button>
+        </form>
+      )}
+
+      <p className="muted" style={{ textAlign: "center" }}>
+        Sudah punya akun? <a href="/login">Masuk</a>
+      </p>
+    </div>
+  );
+}

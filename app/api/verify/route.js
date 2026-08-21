@@ -1,10 +1,11 @@
 import bcrypt from "bcryptjs";
 import { query } from "@/lib/db";
 import { signSession, setUserCookie } from "@/lib/auth";
+import { sendAdminNewUserNotification } from "@/lib/mailer";
 
 export async function POST(req) {
   try {
-  const { email, code, username, password } = await req.json();
+  const { email, code, username, password, referralCode } = await req.json();
 
   if (!email || !code) {
     return Response.json({ error: "Data tidak lengkap" }, { status: 400 });
@@ -45,6 +46,26 @@ export async function POST(req) {
     return Response.json({ error: "Username sudah dipakai" }, { status: 400 });
   }
 
+  // Kalau ada kode referral, cari pemiliknya (kode referral = username pengajak)
+  let referredBy = null;
+  if (referralCode && referralCode.trim()) {
+    const refCode = referralCode.trim();
+    if (refCode.toLowerCase() === username.toLowerCase()) {
+      return Response.json(
+        { error: "Tidak bisa memakai kode referral sendiri" },
+        { status: 400 }
+      );
+    }
+    const refUser = await query("select id from users where username = $1", [refCode]);
+    if (refUser.rows.length === 0) {
+      return Response.json(
+        { error: `Kode referral "${refCode}" tidak ditemukan` },
+        { status: 400 }
+      );
+    }
+    referredBy = refUser.rows[0].id;
+  }
+
   const hash = await bcrypt.hash(password, 10);
 
   const existing = await query("select id from users where email = $1", [
@@ -55,14 +76,14 @@ export async function POST(req) {
   if (existing.rows.length > 0) {
     userId = existing.rows[0].id;
     await query(
-      "update users set username = $1, password_hash = $2, is_verified = true where id = $3",
-      [username, hash, userId]
+      "update users set username = $1, password_hash = $2, is_verified = true, referred_by = coalesce(referred_by, $4) where id = $3",
+      [username, hash, userId, referredBy]
     );
   } else {
     const inserted = await query(
-      `insert into users (email, username, password_hash, is_verified)
-       values ($1, $2, $3, true) returning id`,
-      [email, username, hash]
+      `insert into users (email, username, password_hash, is_verified, referred_by)
+       values ($1, $2, $3, true, $4) returning id`,
+      [email, username, hash, referredBy]
     );
     userId = inserted.rows[0].id;
   }
@@ -73,6 +94,13 @@ export async function POST(req) {
 
   const token = signSession({ userId, role: "user" });
   setUserCookie(token);
+
+  // Kirim notifikasi ke email admin (opsional, gagal kirim tidak menggagalkan pendaftaran)
+  try {
+    await sendAdminNewUserNotification({ email, username });
+  } catch (e) {
+    console.error("Gagal kirim notifikasi admin (diabaikan):", e);
+  }
 
   return Response.json({ ok: true, step: "done" });
   } catch (e) {

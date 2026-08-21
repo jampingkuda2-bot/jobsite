@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
@@ -10,8 +10,20 @@ export default function RegisterPage() {
   const [code, setCode] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [referralCode, setReferralCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Ambil kode referral dari URL (?ref=username), kalau ada, tanpa perlu Suspense
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get("ref");
+      if (ref) setReferralCode(ref);
+    } catch (e) {
+      // abaikan kalau gagal, field tetap kosong dan bisa diisi manual
+    }
+  }, []);
 
   async function sendOtp(e) {
     e.preventDefault();
@@ -67,7 +79,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code, username, password }),
+        body: JSON.stringify({ email, code, username, password, referralCode }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -153,6 +165,14 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Minimal 6 karakter"
+            />
+          </div>
+          <div className="field">
+            <label>Kode referral (opsional)</label>
+            <input
+              value={referralCode}
+              onChange={(e) => setReferralCode(e.target.value)}
+              placeholder="Username yang mengajak Anda"
             />
           </div>
           <button disabled={loading}>

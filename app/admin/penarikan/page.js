@@ -8,9 +8,16 @@ function formatRupiah(n) {
   return "Rp" + Number(n).toLocaleString("id-ID");
 }
 
+function formatTanggal(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
 export default function AdminWithdrawalsPage() {
   const router = useRouter();
   const [items, setItems] = useState(null);
+  const [history, setHistory] = useState(null);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
 
@@ -23,12 +30,15 @@ export default function AdminWithdrawalsPage() {
       if (!res.ok) {
         setError(d.error || `Gagal memuat data (error ${res.status})`);
         setItems([]);
+        setHistory([]);
         return;
       }
       setItems(d.withdrawals);
+      setHistory(d.history);
     } catch (e) {
       setError("Tidak bisa terhubung ke server.");
       setItems([]);
+      setHistory([]);
     }
   }
 
@@ -58,6 +68,7 @@ export default function AdminWithdrawalsPage() {
     <div className="wrap-wide">
       <AdminNav />
       {error && <div className="error">{error}</div>}
+
       <div className="card">
         <h2>Pengajuan penarikan</h2>
         {items === null && <p className="muted">Memuat...</p>}
@@ -79,6 +90,40 @@ export default function AdminWithdrawalsPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="card">
+        <h2>Riwayat penarikan</h2>
+        {history === null && <p className="muted">Memuat...</p>}
+        {history && history.length === 0 && !error && <p className="muted">Belum ada riwayat.</p>}
+        {history && history.length > 0 && (
+          <table>
+            <thead>
+              <tr>
+                <th>Pengguna</th>
+                <th>Jumlah</th>
+                <th>DANA</th>
+                <th>Status</th>
+                <th>Selesai</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((w) => (
+                <tr key={w.id}>
+                  <td>{w.username}</td>
+                  <td>{formatRupiah(w.amount)}</td>
+                  <td>{w.dana_number}</td>
+                  <td>
+                    <span className={`badge ${w.status === "done" ? "done" : "rejected"}`}>
+                      {w.status === "done" ? "Selesai" : "Ditolak"}
+                    </span>
+                  </td>
+                  <td>{formatTanggal(w.completed_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

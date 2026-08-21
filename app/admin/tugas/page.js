@@ -18,10 +18,21 @@ export default function AdminTasksPage() {
   const [error, setError] = useState("");
 
   async function load() {
-    const res = await fetch("/api/admin/tasks");
-    if (res.status === 401) return router.push("/admin/login");
-    const d = await res.json();
-    setTasks(d.tasks);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/tasks");
+      if (res.status === 401) return router.push("/admin/login");
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || `Gagal memuat data (error ${res.status})`);
+        setTasks([]);
+        return;
+      }
+      setTasks(d.tasks);
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+      setTasks([]);
+    }
   }
 
   useEffect(() => { load(); }, []);
@@ -29,34 +40,54 @@ export default function AdminTasksPage() {
   async function createTask(e) {
     e.preventDefault();
     setError("");
-    const res = await fetch("/api/admin/tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, link, reward: Number(reward) }),
-    });
-    const d = await res.json();
-    if (!res.ok) return setError(d.error || "Gagal membuat tugas");
-    setTitle(""); setDescription(""); setLink(""); setReward(1500);
-    load();
+    try {
+      const res = await fetch("/api/admin/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, link, reward: Number(reward) }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) return setError(d.error || `Gagal membuat tugas (error ${res.status})`);
+      setTitle(""); setDescription(""); setLink(""); setReward(1500);
+      load();
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    }
   }
 
   async function toggleActive(t) {
-    await fetch("/api/admin/tasks", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: t.id, is_active: !t.is_active }),
-    });
-    load();
+    setError("");
+    try {
+      const res = await fetch("/api/admin/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: t.id, is_active: !t.is_active }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) setError(d.error || `Gagal menyimpan (error ${res.status})`);
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      load();
+    }
   }
 
   async function deleteTask(t) {
     if (!confirm(`Hapus tugas "${t.title}"?`)) return;
-    await fetch("/api/admin/tasks", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: t.id }),
-    });
-    load();
+    setError("");
+    try {
+      const res = await fetch("/api/admin/tasks", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: t.id }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) setError(d.error || `Gagal menghapus (error ${res.status})`);
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      load();
+    }
   }
 
   return (
@@ -93,8 +124,8 @@ export default function AdminTasksPage() {
 
       <div className="card">
         <h2>Semua tugas</h2>
-        {!tasks && <p className="muted">Memuat...</p>}
-        {tasks && tasks.length === 0 && <p className="muted">Belum ada tugas.</p>}
+        {tasks === null && <p className="muted">Memuat...</p>}
+        {tasks && tasks.length === 0 && !error && <p className="muted">Belum ada tugas.</p>}
         {tasks && tasks.map((t) => (
           <div className="task-item" key={t.id}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>

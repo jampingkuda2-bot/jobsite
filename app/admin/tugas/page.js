@@ -16,6 +16,7 @@ export default function AdminTasksPage() {
   const [link, setLink] = useState("");
   const [reward, setReward] = useState(1500);
   const [targetUsername, setTargetUsername] = useState("");
+  const [taskCode, setTaskCode] = useState("");
   const [error, setError] = useState("");
 
   async function load() {
@@ -45,11 +46,11 @@ export default function AdminTasksPage() {
       const res = await fetch("/api/admin/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, link, reward: Number(reward), targetUsername }),
+        body: JSON.stringify({ title, description, link, reward: Number(reward), targetUsername, taskCode }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) return setError(d.error || `Gagal membuat tugas (error ${res.status})`);
-      setTitle(""); setDescription(""); setLink(""); setReward(1500); setTargetUsername("");
+      setTitle(""); setDescription(""); setLink(""); setReward(1500); setTargetUsername(""); setTaskCode("");
       load();
     } catch (e) {
       setError("Tidak bisa terhubung ke server.");
@@ -120,6 +121,10 @@ export default function AdminTasksPage() {
             <input type="number" required value={reward} onChange={(e) => setReward(e.target.value)} />
           </div>
           <div className="field">
+            <label>ID tugas (opsional, bebas format, contoh: TSK-01)</label>
+            <input value={taskCode} onChange={(e) => setTaskCode(e.target.value)} />
+          </div>
+          <div className="field">
             <label>Khusus untuk username tertentu (opsional)</label>
             <input
               value={targetUsername}
@@ -144,6 +149,7 @@ export default function AdminTasksPage() {
               </span>
             </div>
             <div className="title">{t.title}</div>
+            {t.task_code && <p className="muted" style={{ margin: "2px 0" }}>ID: {t.task_code}</p>}
             {t.description && <p className="muted">{t.description}</p>}
             <p className="muted">
               {t.target_username ? `Khusus: ${t.target_username}` : "Untuk semua pengguna"}

@@ -37,6 +37,12 @@ export async function POST(req) {
       { status: 400 }
     );
   }
+  if (!/^[a-z0-9_]+$/.test(username)) {
+    return Response.json(
+      { error: "Username cuma boleh huruf kecil, angka, dan underscore, tanpa spasi" },
+      { status: 400 }
+    );
+  }
 
   const usernameTaken = await query(
     "select id from users where username = $1",

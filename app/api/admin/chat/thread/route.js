@@ -19,8 +19,8 @@ export async function GET(req) {
     }
 
     const msgRes = await query(
-      `select id, sender, message, created_at from chat_messages
-       where user_id = $1 order by created_at asc limit 200`,
+      `select id, sender, message, attachment_url, attachment_type, created_at
+       from chat_messages where user_id = $1 order by created_at asc limit 200`,
       [userId]
     );
 
@@ -41,14 +41,19 @@ export async function POST(req) {
     const admin = getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
-    const { userId, message } = await req.json();
-    if (!userId || !message || !message.trim()) {
+    const { userId, message, attachmentUrl, attachmentType } = await req.json();
+    const text = (message || "").trim();
+
+    if (!userId || (!text && !attachmentUrl)) {
       return Response.json({ error: "Data tidak lengkap" }, { status: 400 });
+    }
+    if (attachmentUrl && !["image", "video"].includes(attachmentType)) {
+      return Response.json({ error: "Jenis lampiran tidak valid" }, { status: 400 });
     }
 
     await query(
-      "insert into chat_messages (user_id, sender, message) values ($1, 'admin', $2)",
-      [userId, message.trim().slice(0, 2000)]
+      "insert into chat_messages (user_id, sender, message, attachment_url, attachment_type) values ($1, 'admin', $2, $3, $4)",
+      [userId, text.slice(0, 2000), attachmentUrl || null, attachmentType || null]
     );
 
     return Response.json({ ok: true });

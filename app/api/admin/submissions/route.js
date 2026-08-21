@@ -69,6 +69,26 @@ export async function POST(req) {
         sub.reward,
         sub.user_id,
       ]);
+
+      // Bonus referral: kalau user ini punya pengajak & belum pernah dapat bonus,
+      // ini artinya tugas yang baru disetujui adalah tugas pertama yang berhasil dia kerjakan
+      const referrerRes = await query(
+        "select referred_by, referral_reward_given from users where id = $1",
+        [sub.user_id]
+      );
+      const referrerInfo = referrerRes.rows[0];
+      if (referrerInfo && referrerInfo.referred_by && !referrerInfo.referral_reward_given) {
+        await query("update users set saldo = saldo + 800 where id = $1", [
+          referrerInfo.referred_by,
+        ]);
+        await query(
+          "insert into balance_adjustments (user_id, amount, reason) values ($1, 800, 'Bonus referral')",
+          [referrerInfo.referred_by]
+        );
+        await query("update users set referral_reward_given = true where id = $1", [
+          sub.user_id,
+        ]);
+      }
     } else {
       await query(
         "update task_submissions set status = 'rejected', reviewed_at = now() where id = $1",

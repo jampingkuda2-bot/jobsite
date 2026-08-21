@@ -15,13 +15,21 @@ export default function DashboardPage() {
   const [notice, setNotice] = useState("");
 
   async function load() {
-    const res = await fetch("/api/me");
-    if (res.status === 401) {
-      router.push("/login");
-      return;
+    try {
+      const res = await fetch("/api/me");
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setData({ error: d.error || `Gagal memuat data (error ${res.status})` });
+        return;
+      }
+      setData(d);
+    } catch (e) {
+      setData({ error: "Tidak bisa terhubung ke server." });
     }
-    const d = await res.json();
-    setData(d);
   }
 
   useEffect(() => {
@@ -32,16 +40,24 @@ export default function DashboardPage() {
     setError("");
     setNotice("");
     setBusyTaskId(taskId);
-    const res = await fetch("/api/tasks/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskId }),
-    });
-    const d = await res.json();
-    setBusyTaskId(null);
-    if (!res.ok) return setError(d.error || "Gagal mengirim tugas");
-    setNotice("Tugas terkirim, menunggu persetujuan admin.");
-    load();
+    try {
+      const res = await fetch("/api/tasks/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || `Gagal mengirim tugas (error ${res.status})`);
+        return;
+      }
+      setNotice("Tugas terkirim, menunggu persetujuan admin.");
+      load();
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setBusyTaskId(null);
+    }
   }
 
   async function logout() {
@@ -50,7 +66,12 @@ export default function DashboardPage() {
   }
 
   if (!data) return <div className="wrap"><p className="muted">Memuat...</p></div>;
-  if (data.error) return <div className="wrap"><div className="error">{data.error}</div></div>;
+  if (data.error) return (
+    <div className="wrap">
+      <div className="error">{data.error}</div>
+      <button onClick={load}>Coba lagi</button>
+    </div>
+  );
 
   return (
     <div className="wrap">

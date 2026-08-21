@@ -97,6 +97,7 @@ export default function AdminWithdrawalsPage() {
         {history === null && <p className="muted">Memuat...</p>}
         {history && history.length === 0 && !error && <p className="muted">Belum ada riwayat.</p>}
         {history && history.length > 0 && (
+          <div className="table-scroll">
           <table>
             <thead>
               <tr>
@@ -123,6 +124,7 @@ export default function AdminWithdrawalsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

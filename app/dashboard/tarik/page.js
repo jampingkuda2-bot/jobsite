@@ -18,26 +18,40 @@ export default function TarikPage() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    fetch("/api/me").then(async (res) => {
-      if (res.status === 401) return router.push("/login");
-      const d = await res.json();
-      setSaldo(d.user.saldo);
-    });
+    fetch("/api/me")
+      .then(async (res) => {
+        if (res.status === 401) return router.push("/login");
+        const d = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(d.error || `Gagal memuat saldo (error ${res.status})`);
+          return;
+        }
+        setSaldo(d.user.saldo);
+      })
+      .catch(() => setError("Tidak bisa terhubung ke server."));
   }, []);
 
   async function submit(e) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const res = await fetch("/api/withdraw", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: Number(amount), danaNumber, danaName }),
-    });
-    const d = await res.json();
-    setLoading(false);
-    if (!res.ok) return setError(d.error || "Gagal mengajukan penarikan");
-    setDone(true);
+    try {
+      const res = await fetch("/api/withdraw", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: Number(amount), danaNumber, danaName }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || `Gagal mengajukan penarikan (error ${res.status})`);
+        return;
+      }
+      setDone(true);
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

@@ -2,10 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { uploadChatFile } from "@/lib/uploadChatFile";
 
 function formatJam(iso) {
   const d = new Date(iso);
   return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+}
+
+function Attachment({ url, type }) {
+  if (type === "image") {
+    return <img src={url} alt="lampiran" style={{ maxWidth: "100%", borderRadius: 10, display: "block", marginTop: 6 }} />;
+  }
+  if (type === "video") {
+    return <video src={url} controls style={{ maxWidth: "100%", borderRadius: 10, display: "block", marginTop: 6 }} />;
+  }
+  return null;
 }
 
 export default function ChatPage() {
@@ -14,7 +25,9 @@ export default function ChatPage() {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const bottomRef = useRef(null);
+  const fileRef = useRef(null);
 
   async function load(silent) {
     try {
@@ -41,28 +54,47 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function send(e) {
-    e.preventDefault();
-    if (!text.trim()) return;
-    setSending(true);
+  async function sendPayload(payload) {
     setError("");
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        body: JSON.stringify(payload),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(d.error || `Gagal mengirim (error ${res.status})`);
         return;
       }
-      setText("");
       load(true);
     } catch (e) {
       setError("Tidak bisa terhubung ke server.");
+    }
+  }
+
+  async function send(e) {
+    e.preventDefault();
+    if (!text.trim()) return;
+    setSending(true);
+    await sendPayload({ message: text });
+    setText("");
+    setSending(false);
+  }
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    try {
+      const { url, type } = await uploadChatFile(file);
+      await sendPayload({ message: "", attachmentUrl: url, attachmentType: type });
+    } catch (err) {
+      setError(err.message || "Gagal mengunggah file");
     } finally {
-      setSending(false);
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
     }
   }
 
@@ -94,7 +126,8 @@ export default function ChatPage() {
               overflowWrap: "anywhere",
             }}
           >
-            <div style={{ fontSize: "0.95rem" }}>{m.message}</div>
+            {m.message && <div style={{ fontSize: "0.95rem" }}>{m.message}</div>}
+            {m.attachment_url && <Attachment url={m.attachment_url} type={m.attachment_type} />}
             <div style={{ fontSize: "0.7rem", opacity: 0.7, marginTop: 4 }}>
               {m.sender === "admin" ? "Admin · " : ""}{formatJam(m.created_at)}
             </div>
@@ -104,6 +137,22 @@ export default function ChatPage() {
       </div>
 
       <form onSubmit={send} style={{ display: "flex", gap: 8, position: "sticky", bottom: "calc(16px + var(--safe-bottom))" }}>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,video/*"
+          onChange={handleFile}
+          style={{ display: "none" }}
+        />
+        <button
+          type="button"
+          className="secondary"
+          style={{ width: "auto", padding: "13px 16px" }}
+          onClick={() => fileRef.current?.click()}
+          disabled={uploading}
+        >
+          {uploading ? "..." : "📎"}
+        </button>
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -124,4 +173,4 @@ export default function ChatPage() {
       </form>
     </div>
   );
-            }
+}

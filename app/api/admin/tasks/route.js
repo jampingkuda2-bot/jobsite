@@ -7,7 +7,8 @@ export async function GET() {
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
     const res = await query(
-      `select t.id, t.task_code, t.title, t.description, t.link, t.reward, t.is_active, t.created_at,
+      `select t.id, t.task_code, t.title, t.description, t.notes, t.link, t.reward, t.is_active, t.created_at,
+              t.requires_screenshot, t.requires_video,
               t.target_user_id, u.username as target_username
        from tasks t
        left join users u on u.id = t.target_user_id
@@ -27,7 +28,10 @@ export async function POST(req) {
     const admin = getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
-    const { title, description, link, reward, targetUsername, taskCode } = await req.json();
+    const {
+      title, description, link, reward, targetUsername, taskCode,
+      notes, requiresScreenshot, requiresVideo,
+    } = await req.json();
     if (!title) return Response.json({ error: "Judul wajib diisi" }, { status: 400 });
 
     let targetUserId = null;
@@ -46,9 +50,12 @@ export async function POST(req) {
     }
 
     const res = await query(
-      `insert into tasks (title, description, link, reward, is_active, target_user_id, task_code)
-       values ($1, $2, $3, $4, false, $5, $6) returning id`,
-      [title, description || null, link || null, reward || 1500, targetUserId, taskCode || null]
+      `insert into tasks (title, description, link, reward, is_active, target_user_id, task_code, notes, requires_screenshot, requires_video)
+       values ($1, $2, $3, $4, false, $5, $6, $7, $8, $9) returning id`,
+      [
+        title, description || null, link || null, reward || 1500, targetUserId,
+        taskCode || null, notes || null, !!requiresScreenshot, !!requiresVideo,
+      ]
     );
 
     return Response.json({ ok: true, id: res.rows[0].id });

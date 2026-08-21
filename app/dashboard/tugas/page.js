@@ -152,8 +152,23 @@ export default function TaskDetailPage() {
           <h2 style={{ marginBottom: 10 }}>{task.title}</h2>
 
           {task.task_code && <p className="muted">ID: {task.task_code}</p>}
-          {task.description && <p className="muted" style={{ marginTop: 10 }}>{task.description}</p>}
-          {task.notes && <p className="muted" style={{ marginTop: 10 }}>Catatan: {task.notes}</p>}
+          {task.description && <p className="muted pre-wrap" style={{ marginTop: 10 }}>{task.description}</p>}
+          {task.notes && <p className="muted pre-wrap" style={{ marginTop: 10 }}>Catatan: {task.notes}</p>}
+          {task.example_images && task.example_images.length > 0 && (
+            <div style={{ marginTop: 10 }}>
+              <p className="muted" style={{ marginBottom: 6 }}>Contoh:</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {task.example_images.map((url, i) => (
+                  <img
+                    key={i}
+                    src={url}
+                    alt={`contoh ${i + 1}`}
+                    style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)" }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
           {task.link && (
             <p style={{ marginTop: 10 }}>
               <a href={task.link} target="_blank" rel="noreferrer">Buka tautan tugas ↗</a>
@@ -207,5 +222,4 @@ export default function TaskDetailPage() {
       )}
     </div>
   );
-      }
-            
+}

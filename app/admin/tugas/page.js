@@ -8,6 +8,12 @@ function formatRupiah(n) {
   return "Rp" + Number(n).toLocaleString("id-ID");
 }
 
+function formatTanggal(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
 export default function AdminTasksPage() {
   const router = useRouter();
   const [tasks, setTasks] = useState(null);
@@ -184,6 +190,7 @@ export default function AdminTasksPage() {
             </div>
             <div className="title">{t.title}</div>
             {t.task_code && <p className="muted" style={{ margin: "2px 0" }}>ID: {t.task_code}</p>}
+            <p className="muted" style={{ margin: "2px 0" }}>Dibuat: {formatTanggal(t.created_at)}</p>
             {t.description && <p className="muted">{t.description}</p>}
             {t.notes && <p className="muted">Catatan: {t.notes}</p>}
             {(t.requires_screenshot || t.requires_video) && (

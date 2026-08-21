@@ -19,10 +19,21 @@ export default function AdminUsersPage() {
   const [notice, setNotice] = useState("");
 
   async function load() {
-    const res = await fetch("/api/admin/users?q=" + encodeURIComponent(q));
-    if (res.status === 401) return router.push("/admin/login");
-    const d = await res.json();
-    setUsers(d.users);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/users?q=" + encodeURIComponent(q));
+      if (res.status === 401) return router.push("/admin/login");
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || `Gagal memuat data (error ${res.status})`);
+        setUsers([]);
+        return;
+      }
+      setUsers(d.users);
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+      setUsers([]);
+    }
   }
 
   useEffect(() => { load(); }, []);
@@ -31,18 +42,22 @@ export default function AdminUsersPage() {
     e.preventDefault();
     setError("");
     setNotice("");
-    const res = await fetch("/api/admin/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: adjustFor.id, amount: Number(amount), reason }),
-    });
-    const d = await res.json();
-    if (!res.ok) return setError(d.error || "Gagal menyimpan");
-    setNotice(`Saldo ${adjustFor.username} sekarang ${formatRupiah(d.saldo)}`);
-    setAdjustFor(null);
-    setAmount("");
-    setReason("");
-    load();
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: adjustFor.id, amount: Number(amount), reason }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) return setError(d.error || `Gagal menyimpan (error ${res.status})`);
+      setNotice(`Saldo ${adjustFor.username} sekarang ${formatRupiah(d.saldo)}`);
+      setAdjustFor(null);
+      setAmount("");
+      setReason("");
+      load();
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    }
   }
 
   return (
@@ -88,8 +103,8 @@ export default function AdminUsersPage() {
 
       <div className="card">
         <h2>Daftar pengguna</h2>
-        {!users && <p className="muted">Memuat...</p>}
-        {users && users.length === 0 && <p className="muted">Tidak ada pengguna.</p>}
+        {users === null && <p className="muted">Memuat...</p>}
+        {users && users.length === 0 && !error && <p className="muted">Tidak ada pengguna.</p>}
         {users && users.length > 0 && (
           <table>
             <thead>

@@ -13,10 +13,13 @@ export default function AdminTasksPage() {
   const [tasks, setTasks] = useState(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [notes, setNotes] = useState("");
   const [link, setLink] = useState("");
   const [reward, setReward] = useState(1500);
   const [targetUsername, setTargetUsername] = useState("");
   const [taskCode, setTaskCode] = useState("");
+  const [requiresScreenshot, setRequiresScreenshot] = useState(false);
+  const [requiresVideo, setRequiresVideo] = useState(false);
   const [error, setError] = useState("");
 
   async function load() {
@@ -46,11 +49,16 @@ export default function AdminTasksPage() {
       const res = await fetch("/api/admin/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, link, reward: Number(reward), targetUsername, taskCode }),
+        body: JSON.stringify({
+          title, description, link, reward: Number(reward), targetUsername, taskCode,
+          notes, requiresScreenshot, requiresVideo,
+        }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) return setError(d.error || `Gagal membuat tugas (error ${res.status})`);
-      setTitle(""); setDescription(""); setLink(""); setReward(1500); setTargetUsername(""); setTaskCode("");
+      setTitle(""); setDescription(""); setLink(""); setReward(1500);
+      setTargetUsername(""); setTaskCode(""); setNotes("");
+      setRequiresScreenshot(false); setRequiresVideo(false);
       load();
     } catch (e) {
       setError("Tidak bisa terhubung ke server.");
@@ -113,6 +121,10 @@ export default function AdminTasksPage() {
             <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <div className="field">
+            <label>Catatan tambahan (opsional, kosongkan kalau tidak perlu)</label>
+            <textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+          <div className="field">
             <label>Tautan tugas (opsional)</label>
             <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://..." />
           </div>
@@ -123,6 +135,28 @@ export default function AdminTasksPage() {
           <div className="field">
             <label>ID tugas (opsional, bebas format, contoh: TSK-01)</label>
             <input value={taskCode} onChange={(e) => setTaskCode(e.target.value)} />
+          </div>
+          <div className="field">
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={requiresScreenshot}
+                onChange={(e) => setRequiresScreenshot(e.target.checked)}
+                style={{ width: "auto" }}
+              />
+              Wajib lampirkan screenshot saat kirim
+            </label>
+          </div>
+          <div className="field">
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={requiresVideo}
+                onChange={(e) => setRequiresVideo(e.target.checked)}
+                style={{ width: "auto" }}
+              />
+              Wajib lampirkan video saat kirim
+            </label>
           </div>
           <div className="field">
             <label>Khusus untuk username tertentu (opsional)</label>
@@ -151,6 +185,12 @@ export default function AdminTasksPage() {
             <div className="title">{t.title}</div>
             {t.task_code && <p className="muted" style={{ margin: "2px 0" }}>ID: {t.task_code}</p>}
             {t.description && <p className="muted">{t.description}</p>}
+            {t.notes && <p className="muted">Catatan: {t.notes}</p>}
+            {(t.requires_screenshot || t.requires_video) && (
+              <p className="muted">
+                Wajib lampiran: {[t.requires_screenshot && "Screenshot", t.requires_video && "Video"].filter(Boolean).join(" + ")}
+              </p>
+            )}
             <p className="muted">
               {t.target_username ? `Khusus: ${t.target_username}` : "Untuk semua pengguna"}
             </p>

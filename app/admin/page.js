@@ -106,6 +106,7 @@ export default function AdminUsersPage() {
         {users === null && <p className="muted">Memuat...</p>}
         {users && users.length === 0 && !error && <p className="muted">Tidak ada pengguna.</p>}
         {users && users.length > 0 && (
+          <div className="table-scroll">
           <table>
             <thead>
               <tr>
@@ -130,6 +131,7 @@ export default function AdminUsersPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

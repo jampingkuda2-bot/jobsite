@@ -99,6 +99,7 @@ export default function AdminPendingPage() {
               <div className="reward">{formatRupiah(s.reward)}</div>
             </div>
             <p className="muted">Oleh {s.username} ({s.email})</p>
+            {s.task_code && <p className="muted">ID Tugas: {s.task_code}</p>}
             <p className="muted">Dikirim: {formatTanggal(s.submitted_at)}</p>
             <div className="row">
               <button className="small" onClick={() => act(s.id, "approve")} disabled={busyId === s.id}>
@@ -123,6 +124,7 @@ export default function AdminPendingPage() {
               <div className="reward">{formatRupiah(s.reward)}</div>
             </div>
             <p className="muted">{s.username} — {formatTanggal(s.reviewed_at)}</p>
+            {s.task_code && <p className="muted">ID Tugas: {s.task_code}</p>}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
               <span className={`badge ${s.status === "approved" ? "approved" : "rejected"}`}>
                 {s.status === "approved" ? "Disetujui" : "Ditolak"}

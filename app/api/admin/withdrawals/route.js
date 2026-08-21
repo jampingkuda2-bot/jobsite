@@ -7,7 +7,7 @@ export async function GET() {
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
     const pendingRes = await query(
-      `select w.id, w.amount, w.dana_number, w.dana_name, w.status, w.requested_at,
+      `select w.id, w.ref_code, w.amount, w.dana_number, w.dana_name, w.status, w.requested_at,
               u.username, u.email
        from withdrawals w
        join users u on u.id = w.user_id
@@ -16,7 +16,7 @@ export async function GET() {
     );
 
     const historyRes = await query(
-      `select w.id, w.amount, w.dana_number, w.dana_name, w.status, w.requested_at, w.completed_at,
+      `select w.id, w.ref_code, w.amount, w.dana_number, w.dana_name, w.status, w.requested_at, w.completed_at,
               u.username, u.email
        from withdrawals w
        join users u on u.id = w.user_id
@@ -35,7 +35,6 @@ export async function GET() {
   }
 }
 
-// action: "done" (sudah admin TF manual) atau "reject" (batal, saldo dikembalikan)
 export async function POST(req) {
   try {
     const admin = getAdminSession();
@@ -64,7 +63,6 @@ export async function POST(req) {
         [withdrawalId]
       );
     } else {
-      // Batal -> kembalikan saldo user (karena saat pengajuan saldo sudah dipotong)
       await query(
         "update withdrawals set status = 'rejected', completed_at = now() where id = $1",
         [withdrawalId]
@@ -79,5 +77,26 @@ export async function POST(req) {
   } catch (e) {
     console.error("Error di POST /api/admin/withdrawals:", e);
     return Response.json({ error: "Gagal memproses. Cek koneksi database." }, { status: 500 });
+  }
+}
+
+// Hapus 1 baris riwayat (hanya yang sudah selesai/ditolak, bukan yang masih pending)
+export async function DELETE(req) {
+  try {
+    const admin = getAdminSession();
+    if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
+
+    const { withdrawalId } = await req.json();
+    if (!withdrawalId) return Response.json({ error: "ID wajib diisi" }, { status: 400 });
+
+    await query(
+      "delete from withdrawals where id = $1 and status != 'pending'",
+      [withdrawalId]
+    );
+
+    return Response.json({ ok: true });
+  } catch (e) {
+    console.error("Error di DELETE /api/admin/withdrawals:", e);
+    return Response.json({ error: "Gagal menghapus. Cek koneksi database." }, { status: 500 });
   }
 }

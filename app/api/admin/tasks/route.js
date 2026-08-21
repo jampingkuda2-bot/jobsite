@@ -8,7 +8,7 @@ export async function GET() {
 
     const res = await query(
       `select t.id, t.task_code, t.title, t.description, t.notes, t.link, t.reward, t.is_active, t.created_at,
-              t.requires_screenshot, t.requires_video,
+              t.requires_screenshot, t.requires_video, t.example_images,
               t.target_user_id, u.username as target_username
        from tasks t
        left join users u on u.id = t.target_user_id
@@ -30,7 +30,7 @@ export async function POST(req) {
 
     const {
       title, description, link, reward, targetUsername, taskCode,
-      notes, requiresScreenshot, requiresVideo,
+      notes, requiresScreenshot, requiresVideo, exampleImages,
     } = await req.json();
     if (!title) return Response.json({ error: "Judul wajib diisi" }, { status: 400 });
 
@@ -50,11 +50,12 @@ export async function POST(req) {
     }
 
     const res = await query(
-      `insert into tasks (title, description, link, reward, is_active, target_user_id, task_code, notes, requires_screenshot, requires_video)
-       values ($1, $2, $3, $4, false, $5, $6, $7, $8, $9) returning id`,
+      `insert into tasks (title, description, link, reward, is_active, target_user_id, task_code, notes, requires_screenshot, requires_video, example_images)
+       values ($1, $2, $3, $4, false, $5, $6, $7, $8, $9, $10) returning id`,
       [
         title, description || null, link || null, reward || 1500, targetUserId,
         taskCode || null, notes || null, !!requiresScreenshot, !!requiresVideo,
+        Array.isArray(exampleImages) && exampleImages.length > 0 ? exampleImages : null,
       ]
     );
 

@@ -10,8 +10,8 @@ export async function POST(req) {
     if (!taskId) return Response.json({ error: "Tugas tidak valid" }, { status: 400 });
 
     const task = await query(
-      "select id from tasks where id = $1 and is_active = true",
-      [taskId]
+      "select id from tasks where id = $1 and is_active = true and (target_user_id is null or target_user_id = $2)",
+      [taskId, session.userId]
     );
     if (task.rows.length === 0) {
       return Response.json({ error: "Tugas tidak tersedia" }, { status: 400 });

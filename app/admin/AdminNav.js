@@ -7,6 +7,7 @@ const links = [
   { href: "/admin/tugas", label: "Tugas" },
   { href: "/admin/pending", label: "Persetujuan Tugas" },
   { href: "/admin/penarikan", label: "Penarikan" },
+  { href: "/admin/chat", label: "Chat" },
 ];
 
 export default function AdminNav() {

@@ -101,6 +101,12 @@ export default function AdminPendingPage() {
             <p className="muted">Oleh {s.username} ({s.email})</p>
             {s.task_code && <p className="muted">ID Tugas: {s.task_code}</p>}
             <p className="muted">Dikirim: {formatTanggal(s.submitted_at)}</p>
+            {s.screenshot_url && (
+              <img src={s.screenshot_url} alt="screenshot" style={{ maxWidth: "100%", borderRadius: 10, marginTop: 8 }} />
+            )}
+            {s.video_url && (
+              <video src={s.video_url} controls style={{ maxWidth: "100%", borderRadius: 10, marginTop: 8 }} />
+            )}
             <div className="row">
               <button className="small" onClick={() => act(s.id, "approve")} disabled={busyId === s.id}>
                 Setujui
@@ -125,6 +131,12 @@ export default function AdminPendingPage() {
             </div>
             <p className="muted">{s.username} — {formatTanggal(s.reviewed_at)}</p>
             {s.task_code && <p className="muted">ID Tugas: {s.task_code}</p>}
+            {s.screenshot_url && (
+              <img src={s.screenshot_url} alt="screenshot" style={{ maxWidth: "100%", borderRadius: 10, marginTop: 8 }} />
+            )}
+            {s.video_url && (
+              <video src={s.video_url} controls style={{ maxWidth: "100%", borderRadius: 10, marginTop: 8 }} />
+            )}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
               <span className={`badge ${s.status === "approved" ? "approved" : "rejected"}`}>
                 {s.status === "approved" ? "Disetujui" : "Ditolak"}

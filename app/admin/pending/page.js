@@ -11,35 +11,56 @@ function formatRupiah(n) {
 export default function AdminPendingPage() {
   const router = useRouter();
   const [items, setItems] = useState(null);
+  const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
 
   async function load() {
-    const res = await fetch("/api/admin/submissions");
-    if (res.status === 401) return router.push("/admin/login");
-    const d = await res.json();
-    setItems(d.submissions);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/submissions");
+      if (res.status === 401) return router.push("/admin/login");
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || `Gagal memuat data (error ${res.status})`);
+        setItems([]);
+        return;
+      }
+      setItems(d.submissions);
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+      setItems([]);
+    }
   }
 
   useEffect(() => { load(); }, []);
 
   async function act(id, action) {
     setBusyId(id);
-    await fetch("/api/admin/submissions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ submissionId: id, action }),
-    });
-    setBusyId(null);
-    load();
+    setError("");
+    try {
+      const res = await fetch("/api/admin/submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId: id, action }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) setError(d.error || `Gagal memproses (error ${res.status})`);
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setBusyId(null);
+      load();
+    }
   }
 
   return (
     <div className="wrap-wide">
       <AdminNav />
+      {error && <div className="error">{error}</div>}
       <div className="card">
         <h2>Menunggu persetujuan</h2>
-        {!items && <p className="muted">Memuat...</p>}
-        {items && items.length === 0 && <p className="muted">Tidak ada yang menunggu persetujuan.</p>}
+        {items === null && <p className="muted">Memuat...</p>}
+        {items && items.length === 0 && !error && <p className="muted">Tidak ada yang menunggu persetujuan.</p>}
         {items && items.map((s) => (
           <div className="task-item" key={s.id}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>

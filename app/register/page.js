@@ -152,9 +152,10 @@ export default function RegisterPage() {
               required
               minLength={3}
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, ""))}
               placeholder="username_kamu"
             />
+            <p className="muted" style={{ marginTop: 4 }}>Huruf kecil, angka, underscore — tanpa spasi.</p>
           </div>
           <div className="field">
             <label>Password</label>

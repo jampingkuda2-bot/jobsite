@@ -100,8 +100,8 @@ export default function AdminPendingPage() {
             </div>
             <p className="muted">Oleh {s.username} ({s.email})</p>
             {s.task_code && <p className="muted">ID Tugas: {s.task_code}</p>}
-            {s.description && <p className="muted" style={{ marginTop: 6 }}>{s.description}</p>}
-            {s.notes && <p className="muted" style={{ marginTop: 4 }}>Catatan: {s.notes}</p>}
+            {s.description && <p className="muted pre-wrap" style={{ marginTop: 6 }}>{s.description}</p>}
+            {s.notes && <p className="muted pre-wrap" style={{ marginTop: 4 }}>Catatan: {s.notes}</p>}
             <p className="muted">Dikirim: {formatTanggal(s.submitted_at)}</p>
             {s.screenshot_url && (
               <img src={s.screenshot_url} alt="screenshot" style={{ maxWidth: "100%", borderRadius: 10, marginTop: 8 }} />
@@ -133,7 +133,7 @@ export default function AdminPendingPage() {
             </div>
             <p className="muted">{s.username} — {formatTanggal(s.reviewed_at)}</p>
             {s.task_code && <p className="muted">ID Tugas: {s.task_code}</p>}
-            {s.description && <p className="muted" style={{ marginTop: 4 }}>{s.description}</p>}
+            {s.description && <p className="muted pre-wrap" style={{ marginTop: 4 }}>{s.description}</p>}
             {s.screenshot_url && (
               <img src={s.screenshot_url} alt="screenshot" style={{ maxWidth: "100%", borderRadius: 10, marginTop: 8 }} />
             )}

@@ -8,9 +8,16 @@ function formatRupiah(n) {
   return "Rp" + Number(n).toLocaleString("id-ID");
 }
 
+function formatTanggal(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
 export default function AdminPendingPage() {
   const router = useRouter();
   const [items, setItems] = useState(null);
+  const [history, setHistory] = useState(null);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
 
@@ -23,12 +30,15 @@ export default function AdminPendingPage() {
       if (!res.ok) {
         setError(d.error || `Gagal memuat data (error ${res.status})`);
         setItems([]);
+        setHistory([]);
         return;
       }
       setItems(d.submissions);
+      setHistory(d.history);
     } catch (e) {
       setError("Tidak bisa terhubung ke server.");
       setItems([]);
+      setHistory([]);
     }
   }
 
@@ -57,6 +67,7 @@ export default function AdminPendingPage() {
     <div className="wrap-wide">
       <AdminNav />
       {error && <div className="error">{error}</div>}
+
       <div className="card">
         <h2>Menunggu persetujuan</h2>
         {items === null && <p className="muted">Memuat...</p>}
@@ -78,6 +89,42 @@ export default function AdminPendingPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="card">
+        <h2>Riwayat persetujuan</h2>
+        {history === null && <p className="muted">Memuat...</p>}
+        {history && history.length === 0 && !error && <p className="muted">Belum ada riwayat.</p>}
+        {history && history.length > 0 && (
+          <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Pengguna</th>
+                <th>Tugas</th>
+                <th>Imbalan</th>
+                <th>Status</th>
+                <th>Diproses</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.username}</td>
+                  <td>{s.title}</td>
+                  <td>{formatRupiah(s.reward)}</td>
+                  <td>
+                    <span className={`badge ${s.status === "approved" ? "approved" : "rejected"}`}>
+                      {s.status === "approved" ? "Disetujui" : "Ditolak"}
+                    </span>
+                  </td>
+                  <td>{formatTanggal(s.reviewed_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+        )}
       </div>
     </div>
   );

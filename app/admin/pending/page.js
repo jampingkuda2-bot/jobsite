@@ -63,6 +63,26 @@ export default function AdminPendingPage() {
     }
   }
 
+  async function hapusRiwayat(id) {
+    if (!confirm("Hapus riwayat ini secara permanen?")) return;
+    setBusyId(id);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/submissions", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId: id }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) setError(d.error || `Gagal menghapus (error ${res.status})`);
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setBusyId(null);
+      load();
+    }
+  }
+
   return (
     <div className="wrap-wide">
       <AdminNav />
@@ -79,6 +99,7 @@ export default function AdminPendingPage() {
               <div className="reward">{formatRupiah(s.reward)}</div>
             </div>
             <p className="muted">Oleh {s.username} ({s.email})</p>
+            <p className="muted">Dikirim: {formatTanggal(s.submitted_at)}</p>
             <div className="row">
               <button className="small" onClick={() => act(s.id, "approve")} disabled={busyId === s.id}>
                 Setujui
@@ -95,36 +116,23 @@ export default function AdminPendingPage() {
         <h2>Riwayat persetujuan</h2>
         {history === null && <p className="muted">Memuat...</p>}
         {history && history.length === 0 && !error && <p className="muted">Belum ada riwayat.</p>}
-        {history && history.length > 0 && (
-          <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Pengguna</th>
-                <th>Tugas</th>
-                <th>Imbalan</th>
-                <th>Status</th>
-                <th>Diproses</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.username}</td>
-                  <td>{s.title}</td>
-                  <td>{formatRupiah(s.reward)}</td>
-                  <td>
-                    <span className={`badge ${s.status === "approved" ? "approved" : "rejected"}`}>
-                      {s.status === "approved" ? "Disetujui" : "Ditolak"}
-                    </span>
-                  </td>
-                  <td>{formatTanggal(s.reviewed_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {history && history.map((s) => (
+          <div className="task-item" key={s.id}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div className="title">{s.title}</div>
+              <div className="reward">{formatRupiah(s.reward)}</div>
+            </div>
+            <p className="muted">{s.username} — {formatTanggal(s.reviewed_at)}</p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+              <span className={`badge ${s.status === "approved" ? "approved" : "rejected"}`}>
+                {s.status === "approved" ? "Disetujui" : "Ditolak"}
+              </span>
+              <button className="small danger" onClick={() => hapusRiwayat(s.id)} disabled={busyId === s.id}>
+                Hapus
+              </button>
+            </div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

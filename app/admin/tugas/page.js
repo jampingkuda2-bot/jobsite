@@ -15,6 +15,7 @@ export default function AdminTasksPage() {
   const [description, setDescription] = useState("");
   const [link, setLink] = useState("");
   const [reward, setReward] = useState(1500);
+  const [targetUsername, setTargetUsername] = useState("");
   const [error, setError] = useState("");
 
   async function load() {
@@ -44,11 +45,11 @@ export default function AdminTasksPage() {
       const res = await fetch("/api/admin/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, link, reward: Number(reward) }),
+        body: JSON.stringify({ title, description, link, reward: Number(reward), targetUsername }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) return setError(d.error || `Gagal membuat tugas (error ${res.status})`);
-      setTitle(""); setDescription(""); setLink(""); setReward(1500);
+      setTitle(""); setDescription(""); setLink(""); setReward(1500); setTargetUsername("");
       load();
     } catch (e) {
       setError("Tidak bisa terhubung ke server.");
@@ -118,6 +119,14 @@ export default function AdminTasksPage() {
             <label>Imbalan (Rp)</label>
             <input type="number" required value={reward} onChange={(e) => setReward(e.target.value)} />
           </div>
+          <div className="field">
+            <label>Khusus untuk username tertentu (opsional)</label>
+            <input
+              value={targetUsername}
+              onChange={(e) => setTargetUsername(e.target.value)}
+              placeholder="Kosongkan = tampil untuk semua pengguna"
+            />
+          </div>
           <button>Simpan tugas</button>
         </form>
       </div>
@@ -136,6 +145,9 @@ export default function AdminTasksPage() {
             </div>
             <div className="title">{t.title}</div>
             {t.description && <p className="muted">{t.description}</p>}
+            <p className="muted">
+              {t.target_username ? `Khusus: ${t.target_username}` : "Untuk semua pengguna"}
+            </p>
             <div className="row">
               <button className="small secondary" onClick={() => toggleActive(t)}>
                 {t.is_active ? "Nonaktifkan" : "Aktifkan"}

@@ -82,3 +82,24 @@ export async function POST(req) {
     return Response.json({ error: "Gagal memproses. Cek koneksi database." }, { status: 500 });
   }
 }
+
+// Hapus 1 baris riwayat (hanya yang sudah diproses, bukan yang masih pending)
+export async function DELETE(req) {
+  try {
+    const admin = getAdminSession();
+    if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
+
+    const { submissionId } = await req.json();
+    if (!submissionId) return Response.json({ error: "ID wajib diisi" }, { status: 400 });
+
+    await query(
+      "delete from task_submissions where id = $1 and status != 'pending'",
+      [submissionId]
+    );
+
+    return Response.json({ ok: true });
+  } catch (e) {
+    console.error("Error di DELETE /api/admin/submissions:", e);
+    return Response.json({ error: "Gagal menghapus. Cek koneksi database." }, { status: 500 });
+  }
+}

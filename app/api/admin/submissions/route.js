@@ -8,7 +8,7 @@ export async function GET() {
 
     const pendingRes = await query(
       `select s.id, s.status, s.submitted_at, s.screenshot_url, s.video_url,
-              u.username, u.email, t.title, t.task_code, t.reward
+              u.username, u.email, t.title, t.task_code, t.description, t.notes, t.reward
        from task_submissions s
        join users u on u.id = s.user_id
        join tasks t on t.id = s.task_id
@@ -18,7 +18,7 @@ export async function GET() {
 
     const historyRes = await query(
       `select s.id, s.status, s.submitted_at, s.reviewed_at, s.screenshot_url, s.video_url,
-              u.username, u.email, t.title, t.task_code, t.reward
+              u.username, u.email, t.title, t.task_code, t.description, t.notes, t.reward
        from task_submissions s
        join users u on u.id = s.user_id
        join tasks t on t.id = s.task_id

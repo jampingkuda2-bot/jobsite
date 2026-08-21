@@ -11,13 +11,25 @@ function formatRupiah(n) {
 export default function AdminWithdrawalsPage() {
   const router = useRouter();
   const [items, setItems] = useState(null);
+  const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
 
   async function load() {
-    const res = await fetch("/api/admin/withdrawals");
-    if (res.status === 401) return router.push("/admin/login");
-    const d = await res.json();
-    setItems(d.withdrawals);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/withdrawals");
+      if (res.status === 401) return router.push("/admin/login");
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || `Gagal memuat data (error ${res.status})`);
+        setItems([]);
+        return;
+      }
+      setItems(d.withdrawals);
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+      setItems([]);
+    }
   }
 
   useEffect(() => { load(); }, []);
@@ -25,22 +37,31 @@ export default function AdminWithdrawalsPage() {
   async function act(id, action) {
     if (action === "done" && !confirm("Konfirmasi: Anda sudah transfer manual ke DANA pengguna ini?")) return;
     setBusyId(id);
-    await fetch("/api/admin/withdrawals", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ withdrawalId: id, action }),
-    });
-    setBusyId(null);
-    load();
+    setError("");
+    try {
+      const res = await fetch("/api/admin/withdrawals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ withdrawalId: id, action }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) setError(d.error || `Gagal memproses (error ${res.status})`);
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setBusyId(null);
+      load();
+    }
   }
 
   return (
     <div className="wrap-wide">
       <AdminNav />
+      {error && <div className="error">{error}</div>}
       <div className="card">
         <h2>Pengajuan penarikan</h2>
-        {!items && <p className="muted">Memuat...</p>}
-        {items && items.length === 0 && <p className="muted">Tidak ada pengajuan yang menunggu.</p>}
+        {items === null && <p className="muted">Memuat...</p>}
+        {items && items.length === 0 && !error && <p className="muted">Tidak ada pengajuan yang menunggu.</p>}
         {items && items.map((w) => (
           <div className="task-item" key={w.id}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>

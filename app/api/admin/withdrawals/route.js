@@ -6,7 +6,7 @@ export async function GET() {
     const admin = getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
-    const res = await query(
+    const pendingRes = await query(
       `select w.id, w.amount, w.dana_number, w.dana_name, w.status, w.requested_at,
               u.username, u.email
        from withdrawals w
@@ -15,8 +15,19 @@ export async function GET() {
        order by w.requested_at asc`
     );
 
+    const historyRes = await query(
+      `select w.id, w.amount, w.dana_number, w.dana_name, w.status, w.requested_at, w.completed_at,
+              u.username, u.email
+       from withdrawals w
+       join users u on u.id = w.user_id
+       where w.status != 'pending'
+       order by w.completed_at desc
+       limit 100`
+    );
+
     return Response.json({
-      withdrawals: res.rows.map((w) => ({ ...w, amount: Number(w.amount) })),
+      withdrawals: pendingRes.rows.map((w) => ({ ...w, amount: Number(w.amount) })),
+      history: historyRes.rows.map((w) => ({ ...w, amount: Number(w.amount) })),
     });
   } catch (e) {
     console.error("Error di GET /api/admin/withdrawals:", e);

@@ -22,7 +22,7 @@ export async function GET() {
          and (t.target_user_id is null or t.target_user_id = $1)
          and not exists (
            select 1 from task_submissions s
-           where s.task_id = t.id and s.user_id = $1
+           where s.task_id = t.id and s.status in ('pending', 'approved')
          )
        order by t.created_at desc`,
       [user.id]

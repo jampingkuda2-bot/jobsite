@@ -118,6 +118,10 @@ p.muted, span.muted, div.muted {
   overflow-wrap: anywhere;
 }
 
+/* Biar baris baru (enter) yang diketik di deskripsi/catatan tetap kelihatan rapi,
+   tidak dirapel jadi satu baris panjang */
+.pre-wrap { white-space: pre-wrap; }
+
 .field { margin-bottom: 16px; }
 .field label {
   display: block;

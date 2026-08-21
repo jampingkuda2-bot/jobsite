@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [busyTaskId, setBusyTaskId] = useState(null);
   const [notice, setNotice] = useState("");
+  const [copied, setCopied] = useState(false);
 
   async function load() {
     try {
@@ -65,6 +66,14 @@ export default function DashboardPage() {
     router.push("/login");
   }
 
+  function copyReferralLink() {
+    const link = `${window.location.origin}/register?ref=${data.user.username}`;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
   if (!data) return <div className="wrap"><p className="muted">Memuat...</p></div>;
   if (data.error) return (
     <div className="wrap">
@@ -98,6 +107,28 @@ export default function DashboardPage() {
         </div>
         <span style={{ color: "var(--accent)", fontWeight: 700 }}>›</span>
       </a>
+
+      <div className="card">
+        <h2>Ajak teman</h2>
+        <p className="muted" style={{ marginBottom: 12 }}>
+          Dapat <b style={{ color: "var(--accent)" }}>Rp800</b> setiap teman yang Anda ajak berhasil menyelesaikan tugas pertamanya.
+        </p>
+        <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
+          <div>
+            <div className="balance-label" style={{ fontSize: "0.7rem" }}>Diajak</div>
+            <div style={{ fontSize: "1.3rem", fontWeight: 700 }}>{data.referral?.count ?? 0}</div>
+          </div>
+          <div>
+            <div className="balance-label" style={{ fontSize: "0.7rem" }}>Bonus didapat</div>
+            <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--accent)" }}>
+              {formatRupiah(data.referral?.earned ?? 0)}
+            </div>
+          </div>
+        </div>
+        <button className="secondary" onClick={copyReferralLink}>
+          {copied ? "Tersalin!" : "Salin link ajakan"}
+        </button>
+      </div>
 
       {error && <div className="error">{error}</div>}
       {notice && <div className="success">{notice}</div>}

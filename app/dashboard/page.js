@@ -91,6 +91,14 @@ export default function DashboardPage() {
         </a>
       </div>
 
+      <a href="/dashboard/chat" className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none" }}>
+        <div>
+          <h2 style={{ marginBottom: 2 }}>Chat Admin</h2>
+          <span className="muted">Tanya soal ketersediaan tugas</span>
+        </div>
+        <span style={{ color: "var(--accent)", fontWeight: 700 }}>›</span>
+      </a>
+
       {error && <div className="error">{error}</div>}
       {notice && <div className="success">{notice}</div>}
 
@@ -103,6 +111,7 @@ export default function DashboardPage() {
           <div className="task-item" key={t.id}>
             <div className="reward">{formatRupiah(t.reward)}</div>
             <div className="title">{t.title}</div>
+            {t.task_code && <p className="muted" style={{ margin: "2px 0" }}>ID: {t.task_code}</p>}
             {t.description && <p className="muted" style={{ margin: "4px 0" }}>{t.description}</p>}
             {t.link && (
               <p style={{ margin: "6px 0" }}>
@@ -143,7 +152,7 @@ export default function DashboardPage() {
           <div key={w.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
             <div>
               <div>{formatRupiah(w.amount)}</div>
-              <span className="muted">ke {w.dana_number}</span>
+              <span className="muted">{w.ref_code ? `${w.ref_code} · ` : ""}ke {w.dana_number}</span>
             </div>
             <span className={`badge ${w.status === "done" ? "done" : w.status === "rejected" ? "rejected" : "pending"}`}>
               {w.status === "done" ? "Selesai" : w.status === "rejected" ? "Ditolak" : "Diproses"}

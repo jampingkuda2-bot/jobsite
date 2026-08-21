@@ -7,7 +7,8 @@ export async function GET() {
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
     const pendingRes = await query(
-      `select s.id, s.status, s.submitted_at, u.username, u.email, t.title, t.task_code, t.reward
+      `select s.id, s.status, s.submitted_at, s.screenshot_url, s.video_url,
+              u.username, u.email, t.title, t.task_code, t.reward
        from task_submissions s
        join users u on u.id = s.user_id
        join tasks t on t.id = s.task_id
@@ -16,7 +17,8 @@ export async function GET() {
     );
 
     const historyRes = await query(
-      `select s.id, s.status, s.submitted_at, s.reviewed_at, u.username, u.email, t.title, t.task_code, t.reward
+      `select s.id, s.status, s.submitted_at, s.reviewed_at, s.screenshot_url, s.video_url,
+              u.username, u.email, t.title, t.task_code, t.reward
        from task_submissions s
        join users u on u.id = s.user_id
        join tasks t on t.id = s.task_id

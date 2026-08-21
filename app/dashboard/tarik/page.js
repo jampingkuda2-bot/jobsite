@@ -16,6 +16,7 @@ export default function TarikPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  const [refCode, setRefCode] = useState("");
 
   useEffect(() => {
     fetch("/api/me")
@@ -46,6 +47,7 @@ export default function TarikPage() {
         setError(d.error || `Gagal mengajukan penarikan (error ${res.status})`);
         return;
       }
+      setRefCode(d.refCode || "");
       setDone(true);
     } catch (e) {
       setError("Tidak bisa terhubung ke server.");
@@ -71,7 +73,7 @@ export default function TarikPage() {
 
       {done ? (
         <div className="success">
-          Pengajuan penarikan berhasil dikirim. Dana akan ditransfer secara manual ke DANA Anda oleh admin.
+          Pengajuan penarikan berhasil dikirim{refCode ? ` (ID: ${refCode})` : ""}. Dana akan ditransfer secara manual ke DANA Anda oleh admin.
         </div>
       ) : (
         <form onSubmit={submit} className="card">

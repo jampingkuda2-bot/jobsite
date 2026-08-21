@@ -16,7 +16,8 @@ export async function GET() {
     const user = userRes.rows[0];
 
     const tasksRes = await query(
-      `select t.id, t.task_code, t.title, t.description, t.link, t.reward
+      `select t.id, t.task_code, t.title, t.description, t.notes, t.link, t.reward,
+              t.requires_screenshot, t.requires_video
        from tasks t
        where t.is_active = true
          and (t.target_user_id is null or t.target_user_id = $1)

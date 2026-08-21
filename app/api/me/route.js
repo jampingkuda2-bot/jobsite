@@ -17,7 +17,7 @@ export async function GET() {
 
     const tasksRes = await query(
       `select t.id, t.task_code, t.title, t.description, t.notes, t.link, t.reward,
-              t.requires_screenshot, t.requires_video
+              t.requires_screenshot, t.requires_video, t.example_images
        from tasks t
        where t.is_active = true
          and (t.target_user_id is null or t.target_user_id = $1)

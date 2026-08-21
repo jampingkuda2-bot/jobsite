@@ -19,6 +19,7 @@ export async function GET() {
       `select t.id, t.title, t.description, t.link, t.reward
        from tasks t
        where t.is_active = true
+         and (t.target_user_id is null or t.target_user_id = $1)
          and not exists (
            select 1 from task_submissions s
            where s.task_id = t.id and s.user_id = $1

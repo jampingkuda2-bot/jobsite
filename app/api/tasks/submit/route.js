@@ -10,11 +10,15 @@ export async function POST(req) {
     if (!taskId) return Response.json({ error: "Tugas tidak valid" }, { status: 400 });
 
     const task = await query(
-      "select id from tasks where id = $1 and is_active = true and (target_user_id is null or target_user_id = $2)",
+      `select id from tasks where id = $1 and is_active = true
+       and (target_user_id is null or target_user_id = $2)
+       and not exists (
+         select 1 from task_submissions where task_id = $1 and status in ('pending', 'approved')
+       )`,
       [taskId, session.userId]
     );
     if (task.rows.length === 0) {
-      return Response.json({ error: "Tugas tidak tersedia" }, { status: 400 });
+      return Response.json({ error: "Tugas sudah tidak tersedia (mungkin sudah dikerjakan orang lain)" }, { status: 400 });
     }
 
     const already = await query(

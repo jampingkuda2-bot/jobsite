@@ -50,6 +50,10 @@ export default function LoginPage() {
         <button disabled={loading}>{loading ? "Memproses..." : "Masuk"}</button>
       </form>
 
+      <p className="muted" style={{ textAlign: "center", marginBottom: 6 }}>
+        <a href="/forgot-password">Lupa password?</a>
+      </p>
+
       <p className="muted" style={{ textAlign: "center" }}>
         Belum punya akun? <a href="/register">Daftar</a>
       </p>

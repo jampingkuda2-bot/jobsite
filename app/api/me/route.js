@@ -45,11 +45,24 @@ export async function GET() {
       [user.id]
     );
 
+    const referralCountRes = await query(
+      "select count(*)::int as count from users where referred_by = $1",
+      [user.id]
+    );
+    const referralEarnedRes = await query(
+      "select coalesce(sum(amount), 0)::bigint as total from balance_adjustments where user_id = $1 and reason = 'Bonus referral'",
+      [user.id]
+    );
+
     return Response.json({
       user: { email: user.email, username: user.username, saldo: Number(user.saldo) },
       tasks: tasksRes.rows,
       submissions: submissionsRes.rows,
       withdrawals: withdrawalsRes.rows,
+      referral: {
+        count: referralCountRes.rows[0].count,
+        earned: Number(referralEarnedRes.rows[0].total),
+      },
     });
   } catch (e) {
     console.error("Error di GET /api/me:", e);

@@ -64,6 +64,26 @@ export default function AdminWithdrawalsPage() {
     }
   }
 
+  async function hapusRiwayat(id) {
+    if (!confirm("Hapus riwayat ini secara permanen?")) return;
+    setBusyId(id);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/withdrawals", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ withdrawalId: id }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) setError(d.error || `Gagal menghapus (error ${res.status})`);
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setBusyId(null);
+      load();
+    }
+  }
+
   return (
     <div className="wrap-wide">
       <AdminNav />
@@ -79,6 +99,7 @@ export default function AdminWithdrawalsPage() {
               <div className="title">{w.username} ({w.email})</div>
               <div className="reward">{formatRupiah(w.amount)}</div>
             </div>
+            {w.ref_code && <p className="muted" style={{ margin: "2px 0" }}>ID: {w.ref_code}</p>}
             <p className="muted">DANA: {w.dana_number} {w.dana_name ? `— ${w.dana_name}` : ""}</p>
             <div className="row">
               <button className="small" onClick={() => act(w.id, "done")} disabled={busyId === w.id}>
@@ -96,36 +117,24 @@ export default function AdminWithdrawalsPage() {
         <h2>Riwayat penarikan</h2>
         {history === null && <p className="muted">Memuat...</p>}
         {history && history.length === 0 && !error && <p className="muted">Belum ada riwayat.</p>}
-        {history && history.length > 0 && (
-          <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Pengguna</th>
-                <th>Jumlah</th>
-                <th>DANA</th>
-                <th>Status</th>
-                <th>Selesai</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((w) => (
-                <tr key={w.id}>
-                  <td>{w.username}</td>
-                  <td>{formatRupiah(w.amount)}</td>
-                  <td>{w.dana_number}</td>
-                  <td>
-                    <span className={`badge ${w.status === "done" ? "done" : "rejected"}`}>
-                      {w.status === "done" ? "Selesai" : "Ditolak"}
-                    </span>
-                  </td>
-                  <td>{formatTanggal(w.completed_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {history && history.map((w) => (
+          <div className="task-item" key={w.id}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div className="title">{w.username}</div>
+              <div className="reward">{formatRupiah(w.amount)}</div>
+            </div>
+            {w.ref_code && <p className="muted" style={{ margin: "2px 0" }}>ID: {w.ref_code}</p>}
+            <p className="muted">DANA: {w.dana_number} — {formatTanggal(w.completed_at)}</p>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+              <span className={`badge ${w.status === "done" ? "done" : "rejected"}`}>
+                {w.status === "done" ? "Selesai" : "Ditolak"}
+              </span>
+              <button className="small danger" onClick={() => hapusRiwayat(w.id)} disabled={busyId === w.id}>
+                Hapus
+              </button>
+            </div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

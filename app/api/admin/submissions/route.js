@@ -6,7 +6,7 @@ export async function GET() {
     const admin = getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
-    const res = await query(
+    const pendingRes = await query(
       `select s.id, s.status, s.submitted_at, u.username, u.email, t.title, t.reward
        from task_submissions s
        join users u on u.id = s.user_id
@@ -15,8 +15,19 @@ export async function GET() {
        order by s.submitted_at asc`
     );
 
+    const historyRes = await query(
+      `select s.id, s.status, s.submitted_at, s.reviewed_at, u.username, u.email, t.title, t.reward
+       from task_submissions s
+       join users u on u.id = s.user_id
+       join tasks t on t.id = s.task_id
+       where s.status != 'pending'
+       order by s.reviewed_at desc
+       limit 100`
+    );
+
     return Response.json({
-      submissions: res.rows.map((s) => ({ ...s, reward: Number(s.reward) })),
+      submissions: pendingRes.rows.map((s) => ({ ...s, reward: Number(s.reward) })),
+      history: historyRes.rows.map((s) => ({ ...s, reward: Number(s.reward) })),
     });
   } catch (e) {
     console.error("Error di GET /api/admin/submissions:", e);

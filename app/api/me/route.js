@@ -16,7 +16,7 @@ export async function GET() {
     const user = userRes.rows[0];
 
     const tasksRes = await query(
-      `select t.id, t.title, t.description, t.link, t.reward
+      `select t.id, t.task_code, t.title, t.description, t.link, t.reward
        from tasks t
        where t.is_active = true
          and (t.target_user_id is null or t.target_user_id = $1)
@@ -39,7 +39,7 @@ export async function GET() {
     );
 
     const withdrawalsRes = await query(
-      `select id, amount, dana_number, status, requested_at, completed_at
+      `select id, ref_code, amount, dana_number, status, requested_at, completed_at
        from withdrawals where user_id = $1
        order by requested_at desc limit 50`,
       [user.id]

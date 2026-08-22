@@ -20,6 +20,7 @@ export default function AdminPendingPage() {
   const [history, setHistory] = useState(null);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState(null);
+  const [lightbox, setLightbox] = useState(null); // { url, type: 'image' | 'video' }
 
   async function load() {
     setError("");
@@ -106,14 +107,21 @@ export default function AdminPendingPage() {
             {(s.screenshot_url || s.video_url) && (
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 {s.screenshot_url && (
-                  <a href={s.screenshot_url} target="_blank" rel="noreferrer">
-                    <img src={s.screenshot_url} alt="screenshot" style={{ height: 100, width: 100, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)" }} />
-                  </a>
+                  <img
+                    src={s.screenshot_url}
+                    alt="screenshot"
+                    onClick={() => setLightbox({ url: s.screenshot_url, type: "image" })}
+                    style={{ height: 100, width: 100, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)", cursor: "pointer" }}
+                  />
                 )}
                 {s.video_url && (
-                  <a href={s.video_url} target="_blank" rel="noreferrer">
-                    <video src={s.video_url} style={{ height: 100, width: 100, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)" }} />
-                  </a>
+                  <div
+                    onClick={() => setLightbox({ url: s.video_url, type: "video" })}
+                    style={{ position: "relative", height: 100, width: 100, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)", cursor: "pointer" }}
+                  >
+                    <video src={s.video_url} style={{ height: "100%", width: "100%", objectFit: "cover", display: "block" }} />
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.25)", color: "white", fontSize: 24 }}>▶</div>
+                  </div>
                 )}
               </div>
             )}
@@ -145,14 +153,21 @@ export default function AdminPendingPage() {
             {(s.screenshot_url || s.video_url) && (
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 {s.screenshot_url && (
-                  <a href={s.screenshot_url} target="_blank" rel="noreferrer">
-                    <img src={s.screenshot_url} alt="screenshot" style={{ height: 100, width: 100, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)" }} />
-                  </a>
+                  <img
+                    src={s.screenshot_url}
+                    alt="screenshot"
+                    onClick={() => setLightbox({ url: s.screenshot_url, type: "image" })}
+                    style={{ height: 100, width: 100, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)", cursor: "pointer" }}
+                  />
                 )}
                 {s.video_url && (
-                  <a href={s.video_url} target="_blank" rel="noreferrer">
-                    <video src={s.video_url} style={{ height: 100, width: 100, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)" }} />
-                  </a>
+                  <div
+                    onClick={() => setLightbox({ url: s.video_url, type: "video" })}
+                    style={{ position: "relative", height: 100, width: 100, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)", cursor: "pointer" }}
+                  >
+                    <video src={s.video_url} style={{ height: "100%", width: "100%", objectFit: "cover", display: "block" }} />
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.25)", color: "white", fontSize: 24 }}>▶</div>
+                  </div>
                 )}
               </div>
             )}
@@ -167,6 +182,33 @@ export default function AdminPendingPage() {
           </div>
         ))}
       </div>
+
+      {lightbox && (
+        <div
+          onClick={() => setLightbox(null)}
+          style={{
+            position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 1000, padding: 20,
+          }}
+        >
+          <button
+            onClick={() => setLightbox(null)}
+            style={{
+              position: "absolute", top: 20, right: 20, width: 40, height: 40,
+              borderRadius: "50%", background: "var(--panel-2)", color: "var(--text)",
+              border: "1px solid var(--border)", fontSize: 18, padding: 0, boxShadow: "none",
+            }}
+          >
+            ✕
+          </button>
+          {lightbox.type === "image" ? (
+            <img src={lightbox.url} alt="lampiran" style={{ maxWidth: "100%", maxHeight: "85vh", borderRadius: 12 }} onClick={(e) => e.stopPropagation()} />
+          ) : (
+            <video src={lightbox.url} controls autoPlay style={{ maxWidth: "100%", maxHeight: "85vh", borderRadius: 12 }} onClick={(e) => e.stopPropagation()} />
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -103,11 +103,19 @@ export default function AdminPendingPage() {
             {s.description && <p className="muted pre-wrap" style={{ marginTop: 6 }}>{s.description}</p>}
             {s.notes && <p className="muted pre-wrap" style={{ marginTop: 4 }}>Catatan: {s.notes}</p>}
             <p className="muted">Dikirim: {formatTanggal(s.submitted_at)}</p>
-            {s.screenshot_url && (
-              <img src={s.screenshot_url} alt="screenshot" style={{ maxWidth: "100%", borderRadius: 10, marginTop: 8 }} />
-            )}
-            {s.video_url && (
-              <video src={s.video_url} controls style={{ maxWidth: "100%", borderRadius: 10, marginTop: 8 }} />
+            {(s.screenshot_url || s.video_url) && (
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                {s.screenshot_url && (
+                  <a href={s.screenshot_url} target="_blank" rel="noreferrer">
+                    <img src={s.screenshot_url} alt="screenshot" style={{ height: 100, width: 100, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)" }} />
+                  </a>
+                )}
+                {s.video_url && (
+                  <a href={s.video_url} target="_blank" rel="noreferrer">
+                    <video src={s.video_url} style={{ height: 100, width: 100, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)" }} />
+                  </a>
+                )}
+              </div>
             )}
             <div className="row">
               <button className="small" onClick={() => act(s.id, "approve")} disabled={busyId === s.id}>
@@ -134,11 +142,19 @@ export default function AdminPendingPage() {
             <p className="muted">{s.username} — {formatTanggal(s.reviewed_at)}</p>
             {s.task_code && <p className="muted">ID Tugas: {s.task_code}</p>}
             {s.description && <p className="muted pre-wrap" style={{ marginTop: 4 }}>{s.description}</p>}
-            {s.screenshot_url && (
-              <img src={s.screenshot_url} alt="screenshot" style={{ maxWidth: "100%", borderRadius: 10, marginTop: 8 }} />
-            )}
-            {s.video_url && (
-              <video src={s.video_url} controls style={{ maxWidth: "100%", borderRadius: 10, marginTop: 8 }} />
+            {(s.screenshot_url || s.video_url) && (
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                {s.screenshot_url && (
+                  <a href={s.screenshot_url} target="_blank" rel="noreferrer">
+                    <img src={s.screenshot_url} alt="screenshot" style={{ height: 100, width: 100, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)" }} />
+                  </a>
+                )}
+                {s.video_url && (
+                  <a href={s.video_url} target="_blank" rel="noreferrer">
+                    <video src={s.video_url} style={{ height: 100, width: 100, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)" }} />
+                  </a>
+                )}
+              </div>
             )}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
               <span className={`badge ${s.status === "approved" ? "approved" : "rejected"}`}>

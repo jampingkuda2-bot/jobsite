@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [announcement, setAnnouncement] = useState(null);
 
   async function load() {
     try {
@@ -33,6 +34,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     load();
+    fetch("/api/announcement")
+      .then((res) => res.json())
+      .then((d) => setAnnouncement(d.message))
+      .catch(() => {});
   }, []);
 
   async function logout() {
@@ -58,6 +63,12 @@ export default function DashboardPage() {
 
   return (
     <div className="wrap">
+      {announcement && (
+        <div className="announcement-bar">
+          <span className="marquee-track">📢 &nbsp;{announcement}&nbsp;&nbsp;&nbsp;&nbsp;📢 &nbsp;{announcement}</span>
+        </div>
+      )}
+
       <div className="top-bar">
         <div>
           <h1>Halo, {data.user.username}</h1>

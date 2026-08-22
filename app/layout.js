@@ -1,7 +1,7 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Dashboard Saldo",
+  title: "Freelance Micro Task",
   description: "Kerjakan tugas, kumpulkan saldo, tarik ke DANA.",
 };
 

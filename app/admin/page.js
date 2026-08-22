@@ -18,6 +18,50 @@ export default function AdminUsersPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  const [annMessage, setAnnMessage] = useState("");
+  const [annActive, setAnnActive] = useState(false);
+  const [annLoaded, setAnnLoaded] = useState(false);
+  const [annSaving, setAnnSaving] = useState(false);
+
+  async function loadAnnouncement() {
+    try {
+      const res = await fetch("/api/admin/announcement");
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setAnnMessage(d.message || "");
+        setAnnActive(d.is_active || false);
+      }
+    } catch (e) {
+      // gagal muat pengumuman diabaikan, gak sepenting data utama
+    } finally {
+      setAnnLoaded(true);
+    }
+  }
+
+  async function saveAnnouncement(e) {
+    e.preventDefault();
+    setError("");
+    setNotice("");
+    setAnnSaving(true);
+    try {
+      const res = await fetch("/api/admin/announcement", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: annMessage, isActive: annActive }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || `Gagal menyimpan pengumuman (error ${res.status})`);
+        return;
+      }
+      setNotice("Pengumuman disimpan.");
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setAnnSaving(false);
+    }
+  }
+
   async function load() {
     setError("");
     try {
@@ -36,7 +80,7 @@ export default function AdminUsersPage() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadAnnouncement(); }, []);
 
   async function submitAdjust(e) {
     e.preventDefault();
@@ -66,6 +110,38 @@ export default function AdminUsersPage() {
 
       {error && <div className="error">{error}</div>}
       {notice && <div className="success">{notice}</div>}
+
+      <div className="card">
+        <h2>Teks berjalan (running text)</h2>
+        <p className="muted" style={{ marginBottom: 12 }}>
+          Muncul di paling atas dashboard pengguna kalau dinyalakan.
+        </p>
+        {annLoaded && (
+          <form onSubmit={saveAnnouncement}>
+            <div className="field">
+              <label>Isi pengumuman</label>
+              <textarea
+                rows={2}
+                value={annMessage}
+                onChange={(e) => setAnnMessage(e.target.value)}
+                placeholder="Contoh: Tugas baru sudah tersedia, buruan cek!"
+              />
+            </div>
+            <div className="field">
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={annActive}
+                  onChange={(e) => setAnnActive(e.target.checked)}
+                  style={{ width: "auto" }}
+                />
+                Tampilkan di dashboard pengguna
+              </label>
+            </div>
+            <button disabled={annSaving}>{annSaving ? "Menyimpan..." : "Simpan pengumuman"}</button>
+          </form>
+        )}
+      </div>
 
       <div className="card">
         <h2>Cari pengguna</h2>

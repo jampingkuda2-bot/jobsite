@@ -198,19 +198,30 @@ export default function RegisterPage() {
             <div className="otp-orbit-ring" />
             <div className="otp-hub" />
             {digits.map((d, i) => {
-              // Susunan hexagon melingkar dipakai cuma saat animasi "verifying"
-              const angle = -90 + i * 60;
-              const rad = (angle * Math.PI) / 180;
-              const radius = 78;
-              const tx = Math.cos(rad) * radius;
-              const ty = Math.sin(rad) * radius;
-              const rot = i % 2 === 0 ? 14 : -14;
+              let tx, ty, rot;
+              if (verifying) {
+                // Susunan hexagon melingkar saat animasi berhasil
+                const angle = -90 + i * 60;
+                const rad = (angle * Math.PI) / 180;
+                const radius = 78;
+                tx = Math.cos(rad) * radius;
+                ty = Math.sin(rad) * radius;
+                rot = i % 2 === 0 ? 14 : -14;
+              } else {
+                // Susunan baris normal, dihitung dari titik tengah yang sama
+                // biar transisi ke bentuk lingkaran nanti mulus (bukan loncat)
+                const rowSpacing = 56;
+                const totalWidth = (OTP_LENGTH - 1) * rowSpacing;
+                tx = -totalWidth / 2 + i * rowSpacing;
+                ty = 0;
+                rot = 0;
+              }
               return (
                 <input
                   key={i}
                   ref={(el) => (otpInputRefs.current[i] = el)}
                   className={`otp-slot${verifying ? " verified" : ""}`}
-                  style={verifying ? { transform: `translate(${tx}px, ${ty}px) rotate(${rot}deg)` } : undefined}
+                  style={{ transform: `translate(${tx}px, ${ty}px) rotate(${rot}deg)` }}
                   type="text"
                   inputMode="numeric"
                   maxLength={1}

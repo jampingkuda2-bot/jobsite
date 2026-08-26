@@ -1,18 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+
+const OTP_LENGTH = 6;
 
 export default function RegisterPage() {
   const router = useRouter();
   const [stage, setStage] = useState("email"); // email -> otp -> credentials
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
+  const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(""));
+  const [verifying, setVerifying] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [referralCode, setReferralCode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const otpInputRefs = useRef([]);
+
+  const code = digits.join("");
 
   useEffect(() => {
     // Ambil kode referral dari URL (?ref=username), kalau ada, tanpa perlu Suspense
@@ -48,26 +54,86 @@ export default function RegisterPage() {
     }
   }
 
-  async function checkOtp(e) {
-    e.preventDefault();
+  async function checkOtp(fullCode) {
     setError("");
     setLoading(true);
     try {
       const res = await fetch("/api/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email, code: fullCode }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error || `Kode salah (error ${res.status})`);
+        setDigits(Array(OTP_LENGTH).fill(""));
+        otpInputRefs.current[0]?.focus();
         return;
       }
-      setStage("credentials");
+      // Kode benar: mainkan animasi orbit dulu sebentar sebelum lanjut
+      setVerifying(true);
+      setTimeout(() => {
+        setStage("credentials");
+        setVerifying(false);
+      }, 850);
     } catch (err) {
       setError("Tidak bisa terhubung ke server. Coba lagi.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleDigitChange(index, value) {
+    const v = value.replace(/[^0-9]/g, "");
+    if (!v) {
+      const next = [...digits];
+      next[index] = "";
+      setDigits(next);
+      return;
+    }
+    // Kalau user paste banyak karakter sekaligus di satu kotak
+    if (v.length > 1) {
+      const chars = v.slice(0, OTP_LENGTH - index).split("");
+      const next = [...digits];
+      chars.forEach((c, i) => { next[index + i] = c; });
+      setDigits(next);
+      const lastFilled = Math.min(index + chars.length, OTP_LENGTH - 1);
+      otpInputRefs.current[lastFilled]?.focus();
+      const joined = next.join("");
+      if (joined.length === OTP_LENGTH && next.every((d) => d !== "")) {
+        checkOtp(joined);
+      }
+      return;
+    }
+    const next = [...digits];
+    next[index] = v;
+    setDigits(next);
+    if (index < OTP_LENGTH - 1) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+    if (next.every((d) => d !== "")) {
+      checkOtp(next.join(""));
+    }
+  }
+
+  function handleDigitKeyDown(index, e) {
+    if (e.key === "Backspace" && !digits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  }
+
+  function handlePasteOtp(e) {
+    const text = e.clipboardData.getData("text").replace(/[^0-9]/g, "");
+    if (!text) return;
+    e.preventDefault();
+    const chars = text.slice(0, OTP_LENGTH).split("");
+    const next = Array(OTP_LENGTH).fill("");
+    chars.forEach((c, i) => { next[i] = c; });
+    setDigits(next);
+    const lastFilled = Math.min(chars.length, OTP_LENGTH - 1);
+    otpInputRefs.current[lastFilled]?.focus();
+    if (chars.length === OTP_LENGTH) {
+      checkOtp(next.join(""));
     }
   }
 
@@ -123,24 +189,43 @@ export default function RegisterPage() {
       )}
 
       {stage === "otp" && (
-        <form onSubmit={checkOtp} className="card">
+        <div className="card">
           <p className="muted">
             Kode verifikasi sudah dikirim ke <b>{email}</b>. Cek inbox atau folder spam.
           </p>
-          <div className="field">
-            <label>Kode verifikasi (6 digit)</label>
-            <input
-              required
-              maxLength={6}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="123456"
-            />
+
+          <div className={`otp-wrap${verifying ? " verifying" : ""}`}>
+            <div className="otp-orbit-ring" />
+            <div className="otp-hub" />
+            {digits.map((d, i) => {
+              // Susunan hexagon melingkar dipakai cuma saat animasi "verifying"
+              const angle = -90 + i * 60;
+              const rad = (angle * Math.PI) / 180;
+              const radius = 78;
+              const tx = Math.cos(rad) * radius;
+              const ty = Math.sin(rad) * radius;
+              const rot = i % 2 === 0 ? 14 : -14;
+              return (
+                <input
+                  key={i}
+                  ref={(el) => (otpInputRefs.current[i] = el)}
+                  className={`otp-slot${verifying ? " verified" : ""}`}
+                  style={verifying ? { transform: `translate(${tx}px, ${ty}px) rotate(${rot}deg)` } : undefined}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={d}
+                  disabled={verifying}
+                  onChange={(e) => handleDigitChange(i, e.target.value)}
+                  onKeyDown={(e) => handleDigitKeyDown(i, e)}
+                  onPaste={handlePasteOtp}
+                />
+              );
+            })}
           </div>
-          <button disabled={loading}>
-            {loading ? "Memeriksa..." : "Verifikasi"}
-          </button>
-        </form>
+
+          {loading && !verifying && <p className="muted" style={{ textAlign: "center" }}>Memeriksa kode...</p>}
+        </div>
       )}
 
       {stage === "credentials" && (

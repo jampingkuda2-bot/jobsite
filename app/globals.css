@@ -346,9 +346,13 @@ nav.admin-nav a.active {
 }
 .otp-wrap.verifying .otp-hub { opacity: 1; }
 .otp-slot {
-  width: 15%;
-  max-width: 46px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 46px;
   height: 56px;
+  margin-top: -28px;
+  margin-left: -23px;
   background: var(--panel-2);
   border: 1.5px solid var(--border);
   border-radius: 14px;
@@ -358,7 +362,6 @@ nav.admin-nav a.active {
   text-align: center;
   padding: 0;
   transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.5s ease, border-color 0.5s ease, box-shadow 0.2s ease, color 0.5s ease;
-  position: relative;
   z-index: 1;
 }
 .otp-slot:focus {

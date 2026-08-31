@@ -1,10 +1,19 @@
 import { query } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 
+async function markAdminActive() {
+  await query(
+    `insert into admin_presence (id, last_active_at) values (1, now())
+     on conflict (id) do update set last_active_at = now()`
+  );
+}
+
 export async function GET(req) {
   try {
     const admin = getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
+
+    await markAdminActive();
 
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("userId");
@@ -40,6 +49,8 @@ export async function POST(req) {
   try {
     const admin = getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
+
+    await markAdminActive();
 
     const { userId, message, attachmentUrl, attachmentType } = await req.json();
     const text = (message || "").trim();

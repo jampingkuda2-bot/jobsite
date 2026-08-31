@@ -13,6 +13,7 @@ export async function POST(req) {
       `select id, requires_screenshot, requires_video
        from tasks where id = $1 and is_active = true
        and (target_user_id is null or target_user_id = $2)
+       and (expires_at is null or expires_at > now())
        and not exists (
          select 1 from task_submissions where task_id = $1 and status in ('pending', 'approved')
        )`,

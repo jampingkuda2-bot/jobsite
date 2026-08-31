@@ -31,7 +31,7 @@ export async function GET() {
     );
 
     const submissionsRes = await query(
-      `select s.id, s.status, s.submitted_at, t.title, t.reward
+      `select s.id, s.status, s.submitted_at, s.rejection_reason, t.title, t.reward
        from task_submissions s
        join tasks t on t.id = s.task_id
        where s.user_id = $1

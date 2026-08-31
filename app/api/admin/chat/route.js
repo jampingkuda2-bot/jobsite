@@ -1,10 +1,19 @@
 import { query } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 
+async function markAdminActive() {
+  await query(
+    `insert into admin_presence (id, last_active_at) values (1, now())
+     on conflict (id) do update set last_active_at = now()`
+  );
+}
+
 export async function GET() {
   try {
     const admin = getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
+
+    await markAdminActive();
 
     // Ambil percakapan terakhir per user, diurutkan dari yang terbaru,
     // sekaligus hitung jumlah pesan yang belum dibaca admin

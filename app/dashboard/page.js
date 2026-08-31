@@ -142,14 +142,19 @@ export default function DashboardPage() {
         <h2>Riwayat tugas</h2>
         {data.submissions.length === 0 && <p className="muted">Belum ada riwayat.</p>}
         {data.submissions.map((s) => (
-          <div key={s.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
-            <div>
-              <div>{s.title}</div>
-              <span className="muted">{formatRupiah(s.reward)}</span>
+          <div key={s.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div>
+                <div>{s.title}</div>
+                <span className="muted">{formatRupiah(s.reward)}</span>
+              </div>
+              <span className={`badge ${s.status}`}>
+                {s.status === "pending" ? "Menunggu" : s.status === "approved" ? "Disetujui" : "Ditolak"}
+              </span>
             </div>
-            <span className={`badge ${s.status}`}>
-              {s.status === "pending" ? "Menunggu" : s.status === "approved" ? "Disetujui" : "Ditolak"}
-            </span>
+            {s.status === "rejected" && s.rejection_reason && (
+              <p className="muted" style={{ marginTop: 4 }}>Alasan: {s.rejection_reason}</p>
+            )}
           </div>
         ))}
       </div>

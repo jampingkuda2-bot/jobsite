@@ -14,6 +14,22 @@ function formatJam(iso) {
   return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
+const ONLINE_THRESHOLD_MS = 20 * 1000; // dianggap online kalau aktif 20 detik terakhir
+
+function presenceLabel(lastActiveAt) {
+  if (!lastActiveAt) return { text: "Belum pernah online", online: false };
+  const diffMs = Date.now() - new Date(lastActiveAt).getTime();
+  if (diffMs < ONLINE_THRESHOLD_MS) return { text: "Online", online: true };
+
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return { text: "Baru saja online", online: false };
+  if (mins < 60) return { text: `Terakhir online ${mins} menit lalu`, online: false };
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return { text: `Terakhir online ${hours} jam lalu`, online: false };
+  const days = Math.floor(hours / 24);
+  return { text: `Terakhir online ${days} hari lalu`, online: false };
+}
+
 function Attachment({ url, type }) {
   if (type === "image") {
     return <img src={url} alt="lampiran" style={{ maxWidth: "100%", borderRadius: 10, display: "block", marginTop: 6 }} />;
@@ -60,6 +76,9 @@ export default function AdminChatPage() {
         return;
       }
       setMessages(d.messages);
+      if (d.user) {
+        setSelected((prev) => (prev ? { ...prev, last_active_at: d.user.last_active_at } : prev));
+      }
     } catch (e) {
       if (!silent) setError("Tidak bisa terhubung ke server.");
     }
@@ -141,7 +160,9 @@ export default function AdminChatPage() {
           {conversations && conversations.length === 0 && (
             <p className="muted">Belum ada percakapan dari pengguna.</p>
           )}
-          {conversations && conversations.map((c) => (
+          {conversations && conversations.map((c) => {
+            const presence = presenceLabel(c.last_active_at);
+            return (
             <div
               key={c.user_id}
               className="task-item"
@@ -149,7 +170,10 @@ export default function AdminChatPage() {
               style={{ cursor: "pointer" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div className="title">{c.username}</div>
+                <div className="title">
+                  {presence.online && <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", marginRight: 6 }} />}
+                  {c.username}
+                </div>
                 {c.unread_count > 0 && (
                   <span className="badge pending">{c.unread_count} baru</span>
                 )}
@@ -157,14 +181,22 @@ export default function AdminChatPage() {
               <p className="muted" style={{ margin: "4px 0" }}>
                 {c.last_sender === "admin" ? "Anda: " : ""}{c.last_message || "(lampiran)"}
               </p>
-              <p className="muted" style={{ fontSize: "0.75rem" }}>{formatWaktu(c.last_at)}</p>
+              <p className="muted" style={{ fontSize: "0.75rem" }}>
+                {formatWaktu(c.last_at)} · <span style={{ color: presence.online ? "var(--accent)" : undefined }}>{presence.text}</span>
+              </p>
             </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="card" style={{ display: "flex", flexDirection: "column", minHeight: "60vh" }}>
           <div className="top-bar" style={{ marginBottom: 12 }}>
-            <h2 style={{ marginBottom: 0 }}>{selected.username}</h2>
+            <div>
+              <h2 style={{ marginBottom: 2 }}>{selected.username}</h2>
+              <span className="muted" style={{ color: presenceLabel(selected.last_active_at).online ? "var(--accent)" : undefined }}>
+                {presenceLabel(selected.last_active_at).text}
+              </span>
+            </div>
             <button className="link-btn" onClick={() => setSelected(null)}>‹ Semua chat</button>
           </div>
 

@@ -11,7 +11,7 @@ export async function GET(req) {
     if (!userId) return Response.json({ error: "userId wajib diisi" }, { status: 400 });
 
     const userRes = await query(
-      "select id, username, email from users where id = $1",
+      "select id, username, email, last_active_at from users where id = $1",
       [userId]
     );
     if (userRes.rows.length === 0) {

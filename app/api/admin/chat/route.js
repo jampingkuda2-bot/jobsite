@@ -13,6 +13,7 @@ export async function GET() {
          u.id as user_id,
          u.username,
          u.email,
+         u.last_active_at,
          last_msg.message as last_message,
          last_msg.created_at as last_at,
          last_msg.sender as last_sender,

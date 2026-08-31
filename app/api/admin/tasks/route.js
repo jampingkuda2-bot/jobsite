@@ -8,7 +8,7 @@ export async function GET() {
 
     const res = await query(
       `select t.id, t.task_code, t.title, t.description, t.notes, t.link, t.reward, t.is_active, t.created_at,
-              t.requires_screenshot, t.requires_video, t.example_images,
+              t.requires_screenshot, t.requires_video, t.example_images, t.expires_at,
               t.target_user_id, u.username as target_username
        from tasks t
        left join users u on u.id = t.target_user_id
@@ -30,7 +30,7 @@ export async function POST(req) {
 
     const {
       title, description, link, reward, targetUsername, taskCode,
-      notes, requiresScreenshot, requiresVideo, exampleImages,
+      notes, requiresScreenshot, requiresVideo, exampleImages, expiresAt,
     } = await req.json();
     if (!title) return Response.json({ error: "Judul wajib diisi" }, { status: 400 });
 
@@ -50,12 +50,13 @@ export async function POST(req) {
     }
 
     const res = await query(
-      `insert into tasks (title, description, link, reward, is_active, target_user_id, task_code, notes, requires_screenshot, requires_video, example_images)
-       values ($1, $2, $3, $4, false, $5, $6, $7, $8, $9, $10) returning id`,
+      `insert into tasks (title, description, link, reward, is_active, target_user_id, task_code, notes, requires_screenshot, requires_video, example_images, expires_at)
+       values ($1, $2, $3, $4, false, $5, $6, $7, $8, $9, $10, $11) returning id`,
       [
         title, description || null, link || null, reward || 1500, targetUserId,
         taskCode || null, notes || null, !!requiresScreenshot, !!requiresVideo,
         Array.isArray(exampleImages) && exampleImages.length > 0 ? exampleImages : null,
+        expiresAt || null,
       ]
     );
 
@@ -71,8 +72,12 @@ export async function PATCH(req) {
     const admin = getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
-    const { id, title, description, link, reward, is_active } = await req.json();
+    const { id, title, description, link, reward, is_active, expiresAt, clearExpiry } = await req.json();
     if (!id) return Response.json({ error: "ID wajib diisi" }, { status: 400 });
+
+    if (clearExpiry) {
+      await query("update tasks set expires_at = null where id = $1", [id]);
+    }
 
     await query(
       `update tasks set
@@ -80,9 +85,10 @@ export async function PATCH(req) {
          description = coalesce($3, description),
          link = coalesce($4, link),
          reward = coalesce($5, reward),
-         is_active = coalesce($6, is_active)
+         is_active = coalesce($6, is_active),
+         expires_at = coalesce($7, expires_at)
        where id = $1`,
-      [id, title, description, link, reward, is_active]
+      [id, title, description, link, reward, is_active, expiresAt]
     );
 
     return Response.json({ ok: true });

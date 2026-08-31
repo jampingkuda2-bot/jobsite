@@ -21,6 +21,7 @@ export async function GET() {
        from tasks t
        where t.is_active = true
          and (t.target_user_id is null or t.target_user_id = $1)
+         and (t.expires_at is null or t.expires_at > now())
          and not exists (
            select 1 from task_submissions s
            where s.task_id = t.id and s.status in ('pending', 'approved')

@@ -9,6 +9,22 @@ function formatJam(iso) {
   return d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 }
 
+const ONLINE_THRESHOLD_MS = 20 * 1000;
+
+function presenceLabel(lastActiveAt) {
+  if (!lastActiveAt) return { text: "Belum pernah online", online: false };
+  const diffMs = Date.now() - new Date(lastActiveAt).getTime();
+  if (diffMs < ONLINE_THRESHOLD_MS) return { text: "Online", online: true };
+
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return { text: "Baru saja online", online: false };
+  if (mins < 60) return { text: `Terakhir online ${mins} menit lalu`, online: false };
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return { text: `Terakhir online ${hours} jam lalu`, online: false };
+  const days = Math.floor(hours / 24);
+  return { text: `Terakhir online ${days} hari lalu`, online: false };
+}
+
 function Attachment({ url, type }) {
   if (type === "image") {
     return <img src={url} alt="lampiran" style={{ maxWidth: "100%", borderRadius: 10, display: "block", marginTop: 6 }} />;
@@ -22,6 +38,7 @@ function Attachment({ url, type }) {
 export default function ChatPage() {
   const router = useRouter();
   const [messages, setMessages] = useState(null);
+  const [adminLastActiveAt, setAdminLastActiveAt] = useState(null);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -39,6 +56,7 @@ export default function ChatPage() {
         return;
       }
       setMessages(d.messages);
+      setAdminLastActiveAt(d.adminLastActiveAt);
     } catch (e) {
       if (!silent) setError("Tidak bisa terhubung ke server.");
     }
@@ -101,7 +119,12 @@ export default function ChatPage() {
   return (
     <div className="wrap" style={{ display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
       <div className="top-bar">
-        <h1>Chat Admin</h1>
+        <div>
+          <h1>Chat Admin</h1>
+          <span className="muted" style={{ color: presenceLabel(adminLastActiveAt).online ? "var(--accent)" : undefined }}>
+            {presenceLabel(adminLastActiveAt).text}
+          </span>
+        </div>
         <a href="/dashboard" className="link-btn">Kembali</a>
       </div>
 

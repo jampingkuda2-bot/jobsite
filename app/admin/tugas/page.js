@@ -29,6 +29,7 @@ export default function AdminTasksPage() {
   const [requiresVideo, setRequiresVideo] = useState(false);
   const [exampleImages, setExampleImages] = useState([]);
   const [uploadingExample, setUploadingExample] = useState(false);
+  const [expiresAt, setExpiresAt] = useState("");
   const exampleFileRef = useRef(null);
   const [error, setError] = useState("");
 
@@ -72,6 +73,23 @@ export default function AdminTasksPage() {
     setExampleImages((prev) => prev.filter((_, i) => i !== index));
   }
 
+  async function clearExpiry(t) {
+    setError("");
+    try {
+      const res = await fetch("/api/admin/tasks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: t.id, clearExpiry: true }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) setError(d.error || `Gagal menyimpan (error ${res.status})`);
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      load();
+    }
+  }
+
   async function createTask(e) {
     e.preventDefault();
     setError("");
@@ -82,6 +100,7 @@ export default function AdminTasksPage() {
         body: JSON.stringify({
           title, description, link, reward: Number(reward), targetUsername, taskCode,
           notes, requiresScreenshot, requiresVideo, exampleImages,
+          expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -89,6 +108,7 @@ export default function AdminTasksPage() {
       setTitle(""); setDescription(""); setLink(""); setReward(1500);
       setTargetUsername(""); setTaskCode(""); setNotes("");
       setRequiresScreenshot(false); setRequiresVideo(false); setExampleImages([]);
+      setExpiresAt("");
       load();
     } catch (e) {
       setError("Tidak bisa terhubung ke server.");
@@ -203,6 +223,17 @@ export default function AdminTasksPage() {
             <input value={taskCode} onChange={(e) => setTaskCode(e.target.value)} />
           </div>
           <div className="field">
+            <label>Batas waktu tugas (opsional, kosongkan = tidak pernah kedaluwarsa)</label>
+            <input
+              type="datetime-local"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+            />
+            <p className="muted" style={{ marginTop: 4 }}>
+              Setelah waktu ini lewat, tugas otomatis hilang dari daftar pengguna.
+            </p>
+          </div>
+          <div className="field">
             <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
               <input
                 type="checkbox"
@@ -263,6 +294,16 @@ export default function AdminTasksPage() {
             {(t.requires_screenshot || t.requires_video) && (
               <p className="muted">
                 Wajib lampiran: {[t.requires_screenshot && "Screenshot", t.requires_video && "Video"].filter(Boolean).join(" + ")}
+              </p>
+            )}
+            {t.expires_at && (
+              <p className="muted" style={{ color: new Date(t.expires_at) < new Date() ? "var(--danger)" : "var(--muted)" }}>
+                {new Date(t.expires_at) < new Date() ? "Sudah kedaluwarsa: " : "Berlaku sampai: "}
+                {formatTanggal(t.expires_at)}
+                {" · "}
+                <a onClick={() => clearExpiry(t)} style={{ cursor: "pointer", textDecoration: "underline" }}>
+                  hapus batas waktu
+                </a>
               </p>
             )}
             <p className="muted">

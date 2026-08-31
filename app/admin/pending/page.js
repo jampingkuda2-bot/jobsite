@@ -46,13 +46,18 @@ export default function AdminPendingPage() {
   useEffect(() => { load(); }, []);
 
   async function act(id, action) {
+    let rejectionReason = null;
+    if (action === "reject") {
+      rejectionReason = window.prompt("Alasan penolakan (opsional, kosongkan kalau tidak perlu):");
+      if (rejectionReason === null) return; // admin membatalkan (klik Batal)
+    }
     setBusyId(id);
     setError("");
     try {
       const res = await fetch("/api/admin/submissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ submissionId: id, action }),
+        body: JSON.stringify({ submissionId: id, action, rejectionReason }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) setError(d.error || `Gagal memproses (error ${res.status})`);
@@ -150,6 +155,9 @@ export default function AdminPendingPage() {
             <p className="muted">{s.username} — {formatTanggal(s.reviewed_at)}</p>
             {s.task_code && <p className="muted">ID Tugas: {s.task_code}</p>}
             {s.description && <p className="muted pre-wrap" style={{ marginTop: 4 }}>{s.description}</p>}
+            {s.status === "rejected" && s.rejection_reason && (
+              <p className="muted" style={{ marginTop: 4, color: "var(--danger)" }}>Alasan: {s.rejection_reason}</p>
+            )}
             {(s.screenshot_url || s.video_url) && (
               <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 {s.screenshot_url && (

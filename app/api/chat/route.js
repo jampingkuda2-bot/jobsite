@@ -17,6 +17,11 @@ export async function GET() {
       [session.userId]
     );
 
+    // Catat waktu aktif terakhir, dipakai buat status online di panel admin
+    await query("update users set last_active_at = now() where id = $1", [
+      session.userId,
+    ]);
+
     return Response.json({ messages: res.rows });
   } catch (e) {
     console.error("Error di GET /api/chat:", e);
@@ -43,6 +48,10 @@ export async function POST(req) {
       "insert into chat_messages (user_id, sender, message, attachment_url, attachment_type) values ($1, 'user', $2, $3, $4)",
       [session.userId, text.slice(0, 2000), attachmentUrl || null, attachmentType || null]
     );
+
+    await query("update users set last_active_at = now() where id = $1", [
+      session.userId,
+    ]);
 
     return Response.json({ ok: true });
   } catch (e) {

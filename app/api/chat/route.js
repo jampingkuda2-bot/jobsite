@@ -12,6 +12,10 @@ export async function GET() {
       [session.userId]
     );
 
+    const adminPresenceRes = await query(
+      "select last_active_at from admin_presence where id = 1"
+    );
+
     await query(
       "update chat_messages set read_by_user = true where user_id = $1 and sender = 'admin' and read_by_user = false",
       [session.userId]
@@ -22,7 +26,10 @@ export async function GET() {
       session.userId,
     ]);
 
-    return Response.json({ messages: res.rows });
+    return Response.json({
+      messages: res.rows,
+      adminLastActiveAt: adminPresenceRes.rows[0]?.last_active_at || null,
+    });
   } catch (e) {
     console.error("Error di GET /api/chat:", e);
     return Response.json({ error: "Gagal memuat pesan. Cek koneksi database." }, { status: 500 });

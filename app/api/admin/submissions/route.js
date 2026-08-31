@@ -17,7 +17,7 @@ export async function GET() {
     );
 
     const historyRes = await query(
-      `select s.id, s.status, s.submitted_at, s.reviewed_at, s.screenshot_url, s.video_url,
+      `select s.id, s.status, s.submitted_at, s.reviewed_at, s.screenshot_url, s.video_url, s.rejection_reason,
               u.username, u.email, t.title, t.task_code, t.description, t.notes, t.reward
        from task_submissions s
        join users u on u.id = s.user_id
@@ -43,7 +43,7 @@ export async function POST(req) {
     const admin = getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
-    const { submissionId, action } = await req.json();
+    const { submissionId, action, rejectionReason } = await req.json();
     if (!submissionId || !["approve", "reject"].includes(action)) {
       return Response.json({ error: "Data tidak valid" }, { status: 400 });
     }
@@ -93,8 +93,8 @@ export async function POST(req) {
       }
     } else {
       await query(
-        "update task_submissions set status = 'rejected', reviewed_at = now() where id = $1",
-        [submissionId]
+        "update task_submissions set status = 'rejected', reviewed_at = now(), rejection_reason = $2 where id = $1",
+        [submissionId, rejectionReason || null]
       );
     }
 

@@ -15,6 +15,21 @@ export async function GET() {
     }
     const user = userRes.rows[0];
 
+    // Cairkan otomatis kunci saldo yang sudah lewat masanya (kalau ada)
+    const dueLocks = await query(
+      "select id, amount, bonus_amount from balance_locks where user_id = $1 and status = 'active' and unlocks_at <= now()",
+      [user.id]
+    );
+    for (const lock of dueLocks.rows) {
+      const total = Number(lock.amount) + Number(lock.bonus_amount);
+      await query("update users set saldo = saldo + $1 where id = $2", [total, user.id]);
+      await query("update balance_locks set status = 'completed', completed_at = now() where id = $1", [lock.id]);
+    }
+    if (dueLocks.rows.length > 0) {
+      const refreshed = await query("select saldo from users where id = $1", [user.id]);
+      user.saldo = refreshed.rows[0].saldo;
+    }
+
     const tasksRes = await query(
       `select t.id, t.task_code, t.title, t.description, t.notes, t.link, t.reward,
               t.requires_screenshot, t.requires_video, t.example_images
@@ -56,6 +71,13 @@ export async function GET() {
       [user.id]
     );
 
+    const locksRes = await query(
+      `select id, amount, duration_days, bonus_percent, bonus_amount, status, locked_at, unlocks_at, completed_at
+       from balance_locks where user_id = $1
+       order by locked_at desc limit 50`,
+      [user.id]
+    );
+
     return Response.json({
       user: { email: user.email, username: user.username, saldo: Number(user.saldo) },
       tasks: tasksRes.rows,
@@ -65,6 +87,7 @@ export async function GET() {
         count: referralCountRes.rows[0].count,
         earned: Number(referralEarnedRes.rows[0].total),
       },
+      locks: locksRes.rows.map((l) => ({ ...l, amount: Number(l.amount), bonus_amount: Number(l.bonus_amount) })),
     });
   } catch (e) {
     console.error("Error di GET /api/me:", e);

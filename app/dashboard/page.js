@@ -85,6 +85,14 @@ export default function DashboardPage() {
         </a>
       </div>
 
+      <a href="/dashboard/kunci-saldo" className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none" }}>
+        <div>
+          <h2 style={{ marginBottom: 2 }}>Kunci Saldo</h2>
+          <span className="muted">Kunci 30/90/365 hari, dapat bonus & badge</span>
+        </div>
+        <span style={{ color: "var(--accent)", fontWeight: 700 }}>›</span>
+      </a>
+
       <a href="/dashboard/chat" className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none" }}>
         <div>
           <h2 style={{ marginBottom: 2 }}>Chat Admin</h2>
@@ -157,6 +165,25 @@ export default function DashboardPage() {
             )}
           </div>
         ))}
+      </div>
+
+      <div className="card">
+        <h2>Saldo terkunci</h2>
+        {(!data.locks || data.locks.length === 0) && <p className="muted">Belum ada saldo yang dikunci.</p>}
+        {data.locks && data.locks.map((l) => {
+          const badge = l.duration_days === 30 ? "Perak" : l.duration_days === 90 ? "Emas" : "Platinum";
+          return (
+            <div key={l.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+              <div>
+                <div>{formatRupiah(l.amount)} · {l.duration_days} hari</div>
+                <span className="muted">Badge: {badge} · Bonus {formatRupiah(l.bonus_amount)}</span>
+              </div>
+              <span className={`badge ${l.status === "completed" ? "done" : "pending"}`}>
+                {l.status === "completed" ? "Sudah cair" : "Terkunci"}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       <div className="card">

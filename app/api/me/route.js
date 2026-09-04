@@ -51,6 +51,16 @@ export async function GET() {
     }
     const user = userRes.rows[0];
 
+    // ================= TAMBAHAN: Hitung total lock aktif =================
+    const lockedRes = await query(
+      `SELECT COALESCE(SUM(amount), 0)::BIGINT AS total_locked
+       FROM balance_locks
+       WHERE user_id = $1 AND status = 'active'`,
+      [user.id]
+    );
+    const totalLocked = Number(lockedRes.rows[0].total_locked);
+    const availableBalance = Number(user.saldo) - totalLocked;
+
     // Ambil daftar tugas tersedia
     const tasksRes = await query(
       `SELECT t.id, t.task_code, t.title, t.description, t.notes, t.link, t.reward,
@@ -126,7 +136,9 @@ export async function GET() {
       user: {
         email: user.email,
         username: user.username,
-        saldo: Number(user.saldo), // saldo utama (gabungan)
+        saldo: Number(user.saldo),
+        total_locked: totalLocked,
+        available_balance: availableBalance,
         token_balance: Number(user.token_balance || 0),
         withdrawable_balance: Number(user.withdrawable_balance || 0),
       },

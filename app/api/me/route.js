@@ -6,7 +6,7 @@ export async function GET() {
     const session = await getUserSession();
     if (!session) return Response.json({ error: "Belum login" }, { status: 401 });
 
-        // MULAI TRANSAKSI UNTUK UNLOCK OTOMATIS
+    // MULAI TRANSAKSI UNTUK UNLOCK OTOMATIS
     await query("BEGIN");
     try {
       const dueLocks = await query(
@@ -40,41 +40,9 @@ export async function GET() {
       throw err;
     }
 
-      for (const lock of dueLocks.rows) {
-        // Kunci baris user
-        await query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [lock.user_id]);
-
-        // Kembalikan pokok + bonus ke saldo (users.saldo)
-const total = Number(lock.amount) + Number(lock.bonus_amount);
-await query(
-  "UPDATE users SET saldo = saldo + $1 WHERE id = $2",
-  [total, lock.user_id]
-);
-
-        // Tambahkan bonus ke withdrawable_balance
-        await query(
-          "UPDATE users SET withdrawable_balance = withdrawable_balance + $1 WHERE id = $2",
-          [lock.bonus_amount, lock.user_id]
-        );
-
-        // Update status lock
-        await query(
-          `UPDATE balance_locks
-           SET status = 'completed', completed_at = NOW()
-           WHERE id = $1`,
-          [lock.id]
-        );
-      }
-
-      await query("COMMIT");
-    } catch (err) {
-      await query("ROLLBACK");
-      throw err;
-    }
-
-    // Ambil data user terbaru (termasuk dua saldo)
+    // Ambil data user terbaru (ambil semua kolom yang diperlukan)
     const userRes = await query(
-      `SELECT id, email, username, token_balance, withdrawable_balance
+      `SELECT id, email, username, saldo, token_balance, withdrawable_balance
        FROM users WHERE id = $1`,
       [session.userId]
     );
@@ -143,7 +111,7 @@ await query(
       [user.id]
     );
 
-    // === TAMBAHAN: Ambil riwayat deposit ===
+    // Ambil riwayat deposit (tambahan)
     const depositsRes = await query(
       `SELECT id, amount, payment_method, status, admin_note,
               requested_at, processed_at, completed_at
@@ -158,10 +126,9 @@ await query(
       user: {
         email: user.email,
         username: user.username,
-        token_balance: Number(user.token_balance),
-        withdrawable_balance: Number(user.withdrawable_balance),
-        // Kolom saldo masih disertakan untuk kompatibilitas (opsional)
-        saldo: Number(user.token_balance) + Number(user.withdrawable_balance),
+        saldo: Number(user.saldo), // saldo utama (gabungan)
+        token_balance: Number(user.token_balance || 0),
+        withdrawable_balance: Number(user.withdrawable_balance || 0),
       },
       tasks: tasksRes.rows,
       submissions: submissionsRes.rows,

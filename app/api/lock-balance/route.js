@@ -1,7 +1,6 @@
 import { query } from "@/lib/db";
 import { getUserSession } from "@/lib/auth";
 
-// Bonus FLAT sekali cair berdasarkan durasi
 const TIERS = {
   30: { bonusPercent: 3, badge: "Perak" },
   90: { bonusPercent: 8, badge: "Emas" },
@@ -10,7 +9,7 @@ const TIERS = {
 
 export async function POST(req) {
   try {
-    const session = await getUserSession(); // tambahkan await
+    const session = await getUserSession();
     if (!session) return Response.json({ error: "Belum login" }, { status: 401 });
 
     const { amount, durationDays } = await req.json();
@@ -25,31 +24,27 @@ export async function POST(req) {
       return Response.json({ error: "Durasi tidak valid" }, { status: 400 });
     }
 
-    // MULAI TRANSAKSI
     await query("BEGIN");
     try {
-      // Lock baris user agar tidak terjadi perubahan bersamaan
       const userRes = await query(
-        "SELECT token_balance FROM users WHERE id = $1 FOR UPDATE",
+        "SELECT saldo FROM users WHERE id = $1 FOR UPDATE",
         [session.userId]
       );
       if (userRes.rows.length === 0) throw new Error("User tidak ditemukan");
 
-      const tokenBalance = Number(userRes.rows[0].token_balance);
-      if (amt > tokenBalance) {
-        throw new Error("Saldo token tidak mencukupi");
+      const totalSaldo = Number(userRes.rows[0].saldo);
+      if (amt > totalSaldo) {
+        throw new Error("Saldo tidak mencukupi");
       }
 
-      // Kurangi token_balance (bukan saldo)
       await query(
-        "UPDATE users SET token_balance = token_balance - $1 WHERE id = $2",
+        "UPDATE users SET saldo = saldo - $1 WHERE id = $2",
         [amt, session.userId]
       );
 
       const bonusAmount = Math.floor((amt * tier.bonusPercent) / 100);
       const unlocksAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-      // Insert ke balance_locks (status default 'active')
       await query(
         `INSERT INTO balance_locks 
           (user_id, amount, duration_days, bonus_percent, bonus_amount, unlocks_at, status)

@@ -23,8 +23,8 @@ export default function AdminDepositPage() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const qrisFileRef = useRef(null);
 
-  const [pending, setPending] = useState(null);
-  const [history, setHistory] = useState(null);
+  const [pending, setPending] = useState([]);
+  const [history, setHistory] = useState([]);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -39,7 +39,7 @@ export default function AdminDepositPage() {
         setQrisImageUrl(d.qrisImageUrl || "");
       }
     } catch (e) {
-      // diamkan, bukan bagian kritis
+      // diamkan
     } finally {
       setSettingsLoaded(true);
     }
@@ -57,8 +57,8 @@ export default function AdminDepositPage() {
         setHistory([]);
         return;
       }
-      setPending(d.pending);
-      setHistory(d.history);
+      setPending(d.pending || []);
+      setHistory(d.history || []);
     } catch (e) {
       setError("Tidak bisa terhubung ke server.");
       setPending([]);
@@ -66,7 +66,10 @@ export default function AdminDepositPage() {
     }
   }
 
-  useEffect(() => { loadSettings(); loadDeposits(); }, []);
+  useEffect(() => {
+    loadSettings();
+    loadDeposits();
+  }, []);
 
   async function handleQrisUpload(e) {
     const file = e.target.files?.[0];
@@ -105,8 +108,10 @@ export default function AdminDepositPage() {
   }
 
   async function act(id, action) {
+    if (!confirm(`Yakin ${action === "approve" ? "menyetujui" : "menolak"} deposit ini?`)) return;
     setBusyId(id);
     setError("");
+    setNotice("");
     try {
       const res = await fetch("/api/admin/deposits", {
         method: "POST",
@@ -114,12 +119,16 @@ export default function AdminDepositPage() {
         body: JSON.stringify({ depositId: id, action }),
       });
       const d = await res.json().catch(() => ({}));
-      if (!res.ok) setError(d.error || `Gagal memproses (error ${res.status})`);
+      if (!res.ok) {
+        setError(d.error || `Gagal memproses (error ${res.status})`);
+      } else {
+        setNotice(`Deposit berhasil ${action === "approve" ? "disetujui" : "ditolak"}.`);
+        loadDeposits(); // refresh daftar
+      }
     } catch (e) {
       setError("Tidak bisa terhubung ke server.");
     } finally {
       setBusyId(null);
-      loadDeposits();
     }
   }
 
@@ -165,24 +174,25 @@ export default function AdminDepositPage() {
 
       <div className="card">
         <h2>Pengajuan deposit</h2>
-        {pending === null && <p className="muted">Memuat...</p>}
-        {pending && pending.length === 0 && !error && <p className="muted">Tidak ada pengajuan yang menunggu.</p>}
-        {pending && pending.map((d) => (
+        {pending.length === 0 && !error && <p className="muted">Tidak ada pengajuan yang menunggu.</p>}
+        {pending.map((d) => (
           <div className="task-item" key={d.id}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <div className="title">{d.username} ({d.email})</div>
               <div className="reward">{formatRupiah(d.amount_idr)}</div>
             </div>
             <p className="muted">Diajukan: {formatTanggal(d.created_at)}</p>
-            <img
-              src={d.proof_url}
-              alt="bukti transfer"
-              onClick={() => window.open(d.proof_url, "_blank")}
-              style={{ height: 120, width: 120, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)", marginTop: 8, cursor: "pointer" }}
-            />
+            {d.proof_url && (
+              <img
+                src={d.proof_url}
+                alt="bukti transfer"
+                onClick={() => window.open(d.proof_url, "_blank")}
+                style={{ height: 120, width: 120, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)", marginTop: 8, cursor: "pointer" }}
+              />
+            )}
             <div className="row" style={{ marginTop: 10 }}>
               <button className="small" onClick={() => act(d.id, "approve")} disabled={busyId === d.id}>
-                Setujui (kredit token)
+                Setujui
               </button>
               <button className="small danger" onClick={() => act(d.id, "reject")} disabled={busyId === d.id}>
                 Tolak
@@ -194,13 +204,12 @@ export default function AdminDepositPage() {
 
       <div className="card">
         <h2>Riwayat deposit</h2>
-        {history === null && <p className="muted">Memuat...</p>}
-        {history && history.length === 0 && !error && <p className="muted">Belum ada riwayat.</p>}
-        {history && history.map((d) => (
+        {history.length === 0 && !error && <p className="muted">Belum ada riwayat.</p>}
+        {history.map((d) => (
           <div key={d.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
             <div>
               <div>{d.username}</div>
-              <span className="muted">{formatRupiah(d.amount_idr)} · {formatTanggal(d.reviewed_at)}</span>
+              <span className="muted">{formatRupiah(d.amount_idr)} · {formatTanggal(d.reviewed_at || d.processed_at)}</span>
             </div>
             <span className={`badge ${d.status === "approved" ? "approved" : "rejected"}`}>
               {d.status === "approved" ? "Disetujui" : "Ditolak"}

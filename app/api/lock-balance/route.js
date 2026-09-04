@@ -1,7 +1,7 @@
 import { query } from "@/lib/db";
 import { getUserSession } from "@/lib/auth";
 
-// Bonus FLAT sekali cair berdasarkan lama kunci (bukan bunga berkala/tahunan)
+// Bonus FLAT sekali cair berdasarkan durasi
 const TIERS = {
   30: { bonusPercent: 3, badge: "Perak" },
   90: { bonusPercent: 8, badge: "Emas" },
@@ -10,7 +10,7 @@ const TIERS = {
 
 export async function POST(req) {
   try {
-    const session = getUserSession();
+    const session = await getUserSession(); // tambahkan await
     if (!session) return Response.json({ error: "Belum login" }, { status: 401 });
 
     const { amount, durationDays } = await req.json();
@@ -25,28 +25,48 @@ export async function POST(req) {
       return Response.json({ error: "Durasi tidak valid" }, { status: 400 });
     }
 
-    const userRes = await query("select saldo from users where id = $1", [session.userId]);
-    const saldo = Number(userRes.rows[0].saldo);
-    if (amt > saldo) {
-      return Response.json({ error: "Saldo tidak mencukupi" }, { status: 400 });
+    // MULAI TRANSAKSI
+    await query("BEGIN");
+    try {
+      // Lock baris user agar tidak terjadi perubahan bersamaan
+      const userRes = await query(
+        "SELECT token_balance FROM users WHERE id = $1 FOR UPDATE",
+        [session.userId]
+      );
+      if (userRes.rows.length === 0) throw new Error("User tidak ditemukan");
+
+      const tokenBalance = Number(userRes.rows[0].token_balance);
+      if (amt > tokenBalance) {
+        throw new Error("Saldo token tidak mencukupi");
+      }
+
+      // Kurangi token_balance (bukan saldo)
+      await query(
+        "UPDATE users SET token_balance = token_balance - $1 WHERE id = $2",
+        [amt, session.userId]
+      );
+
+      const bonusAmount = Math.floor((amt * tier.bonusPercent) / 100);
+      const unlocksAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
+      // Insert ke balance_locks (status default 'active')
+      await query(
+        `INSERT INTO balance_locks 
+          (user_id, amount, duration_days, bonus_percent, bonus_amount, unlocks_at, status)
+         VALUES ($1, $2, $3, $4, $5, $6, 'active')`,
+        [session.userId, amt, days, tier.bonusPercent, bonusAmount, unlocksAt]
+      );
+
+      await query("COMMIT");
+      return Response.json({ ok: true, bonusAmount, unlocksAt });
+    } catch (err) {
+      await query("ROLLBACK");
+      throw err;
     }
-
-    const bonusAmount = Math.floor((amt * tier.bonusPercent) / 100);
-    const unlocksAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-
-    await query("update users set saldo = saldo - $1 where id = $2", [amt, session.userId]);
-
-    await query(
-      `insert into balance_locks (user_id, amount, duration_days, bonus_percent, bonus_amount, unlocks_at)
-       values ($1, $2, $3, $4, $5, $6)`,
-      [session.userId, amt, days, tier.bonusPercent, bonusAmount, unlocksAt]
-    );
-
-    return Response.json({ ok: true, bonusAmount, unlocksAt });
   } catch (e) {
     console.error("Error di /api/lock-balance:", e);
     return Response.json(
-      { error: "Terjadi kesalahan server. Cek koneksi database." },
+      { error: e.message || "Terjadi kesalahan server" },
       { status: 500 }
     );
   }

@@ -44,11 +44,12 @@ export async function GET() {
         // Kunci baris user
         await query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [lock.user_id]);
 
-        // Kembalikan pokok ke token_balance
-        await query(
-          "UPDATE users SET token_balance = token_balance + $1 WHERE id = $2",
-          [lock.amount, lock.user_id]
-        );
+        // Kembalikan pokok + bonus ke saldo (users.saldo)
+const total = Number(lock.amount) + Number(lock.bonus_amount);
+await query(
+  "UPDATE users SET saldo = saldo + $1 WHERE id = $2",
+  [total, lock.user_id]
+);
 
         // Tambahkan bonus ke withdrawable_balance
         await query(

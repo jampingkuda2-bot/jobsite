@@ -77,16 +77,11 @@ export default function DashboardPage() {
         <button className="link-btn" onClick={logout}>Keluar</button>
       </div>
 
-      {/* === CARD SALDO GABUNGAN (Total, Terkunci, Tersedia) === */}
+      {/* === CARD SALDO GABUNGAN (TANPA TOMBOL TOP-UP) === */}
       <div className="balance-card">
-        <div className="balance-row">
-          <div>
-            <div className="balance-label">Total Saldo</div>
-            <div className="balance-value">{formatRupiah(data.user.saldo ?? 0)}</div>
-          </div>
-          <a href="/dashboard/deposit" className="btn" style={{ padding: "6px 14px", fontSize: "0.85rem", textDecoration: "none" }}>
-            + Top-up
-          </a>
+        <div>
+          <div className="balance-label">Total Saldo</div>
+          <div className="balance-value">{formatRupiah(data.user.saldo ?? 0)}</div>
         </div>
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, marginTop: 4 }}>
           <div className="balance-label">Terkunci</div>
@@ -256,11 +251,6 @@ export default function DashboardPage() {
           margin-bottom: 16px;
           border: 1px solid var(--border);
         }
-        .balance-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
         .balance-label {
           font-size: 0.85rem;
           color: var(--muted);
@@ -272,4 +262,4 @@ export default function DashboardPage() {
       `}</style>
     </div>
   );
-}
+          }

@@ -1,103 +1,82 @@
 import { query } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 
-// GET – Lihat daftar deposit
 export async function GET() {
   try {
     const admin = getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
     const pendingRes = await query(
-      `SELECT r.id, r.amount, r.payment_method, r.proof_url, r.requested_at,
-              u.username, u.email
-       FROM deposit_requests r
-       JOIN users u ON u.id = r.user_id
-       WHERE r.status = 'pending'
-       ORDER BY r.requested_at ASC`
+      `select d.id, d.amount_idr, d.proof_url, d.status, d.created_at, u.username, u.email
+       from token_deposits d join users u on u.id = d.user_id
+       where d.status = 'pending'
+       order by d.created_at asc`
     );
 
     const historyRes = await query(
-      `SELECT r.id, r.amount, r.payment_method, r.status, r.admin_note,
-              r.requested_at, r.processed_at, r.completed_at,
-              u.username, u.email
-       FROM deposit_requests r
-       JOIN users u ON u.id = r.user_id
-       WHERE r.status != 'pending'
-       ORDER BY r.processed_at DESC
-       LIMIT 100`
+      `select d.id, d.amount_idr, d.proof_url, d.status, d.created_at, d.reviewed_at, u.username, u.email
+       from token_deposits d join users u on u.id = d.user_id
+       where d.status != 'pending'
+       order by d.reviewed_at desc
+       limit 100`
     );
 
     return Response.json({
-      pending: pendingRes.rows,
-      history: historyRes.rows,
+      pending: pendingRes.rows.map((d) => ({ ...d, amount_idr: Number(d.amount_idr) })),
+      history: historyRes.rows.map((d) => ({ ...d, amount_idr: Number(d.amount_idr) })),
     });
   } catch (e) {
-    console.error("Error di GET /api/admin/deposit:", e);
-    return Response.json({ error: "Gagal memuat data" }, { status: 500 });
+    console.error("Error di GET /api/admin/deposits:", e);
+    return Response.json({ error: "Gagal memuat data. Cek koneksi database." }, { status: 500 });
   }
 }
 
-// POST – Approve atau Reject
+// action: "approve" (kredit ke token_balances milik user) atau "reject"
 export async function POST(req) {
   try {
     const admin = getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
-    const { requestId, action, adminNote } = await req.json();
-    if (!requestId || !["approve", "reject"].includes(action)) {
+    const { depositId, action } = await req.json();
+    if (!depositId || !["approve", "reject"].includes(action)) {
       return Response.json({ error: "Data tidak valid" }, { status: 400 });
     }
 
-    const reqRes = await query(
-      `SELECT user_id, amount, status FROM deposit_requests WHERE id = $1`,
-      [requestId]
+    const depRes = await query(
+      "select id, user_id, amount_idr, status from token_deposits where id = $1",
+      [depositId]
     );
-    if (reqRes.rows.length === 0) return Response.json({ error: "Request tidak ditemukan" }, { status: 404 });
-    const req = reqRes.rows[0];
-    if (req.status !== "pending") {
+    if (depRes.rows.length === 0) {
+      return Response.json({ error: "Data tidak ditemukan" }, { status: 404 });
+    }
+    const dep = depRes.rows[0];
+    if (dep.status !== "pending") {
       return Response.json({ error: "Sudah diproses sebelumnya" }, { status: 400 });
     }
 
-    await query("BEGIN");
-    try {
-      if (action === "approve") {
-        // Lock user
-        await query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [req.user_id]);
-        // Tambah token_balance
-        await query(
-          "UPDATE users SET token_balance = token_balance + $1 WHERE id = $2",
-          [req.amount, req.user_id]
-        );
-        // Update status request
-        await query(
-          `UPDATE deposit_requests
-           SET status = 'approved', processed_at = NOW(), completed_at = NOW(), admin_note = $2
-           WHERE id = $1`,
-          [requestId, adminNote || null]
-        );
-        // Catat riwayat
-        await query(
-          `INSERT INTO balance_adjustments (user_id, amount, reason)
-           VALUES ($1, $2, $3)`,
-          [req.user_id, req.amount, `Deposit via admin`]
-        );
-      } else {
-        // Reject
-        await query(
-          `UPDATE deposit_requests
-           SET status = 'rejected', processed_at = NOW(), admin_note = $2
-           WHERE id = $1`,
-          [requestId, adminNote || "Ditolak admin"]
-        );
-      }
-      await query("COMMIT");
-      return Response.json({ ok: true });
-    } catch (err) {
-      await query("ROLLBACK");
-      throw err;
+    if (action === "approve") {
+      // PENTING: kredit ke token_balances, BUKAN ke users.saldo.
+      // Saldo token ini sengaja terpisah total, tidak bisa ditarik jadi uang.
+      await query(
+        `insert into token_balances (user_id, token_balance, updated_at)
+         values ($1, $2, now())
+         on conflict (user_id) do update set token_balance = token_balances.token_balance + $2, updated_at = now()`,
+        [dep.user_id, dep.amount_idr]
+      );
+      await query(
+        "update token_deposits set status = 'approved', reviewed_at = now() where id = $1",
+        [depositId]
+      );
+    } else {
+      await query(
+        "update token_deposits set status = 'rejected', reviewed_at = now() where id = $1",
+        [depositId]
+      );
     }
+
+    return Response.json({ ok: true });
   } catch (e) {
-    console.error("Error di POST /api/admin/deposit:", e);
-    return Response.json({ error: "Gagal memproses" }, { status: 500 });
+    console.error("Error di POST /api/admin/deposits:", e);
+    return Response.json({ error: "Gagal memproses. Cek koneksi database." }, { status: 500 });
   }
 }

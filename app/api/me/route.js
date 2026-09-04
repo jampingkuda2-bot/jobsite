@@ -119,6 +119,17 @@ export async function GET() {
       [user.id]
     );
 
+    // === TAMBAHAN: Ambil riwayat deposit ===
+    const depositsRes = await query(
+      `SELECT id, amount, payment_method, status, admin_note,
+              requested_at, processed_at, completed_at
+       FROM deposit_requests
+       WHERE user_id = $1
+       ORDER BY requested_at DESC
+       LIMIT 10`,
+      [user.id]
+    );
+
     return Response.json({
       user: {
         email: user.email,
@@ -139,6 +150,10 @@ export async function GET() {
         ...l,
         amount: Number(l.amount),
         bonus_amount: Number(l.bonus_amount),
+      })),
+      deposits: depositsRes.rows.map((d) => ({
+        ...d,
+        amount: Number(d.amount),
       })),
     });
   } catch (e) {

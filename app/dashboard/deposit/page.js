@@ -57,10 +57,14 @@ export default function DepositPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/deposit", {
+      const res = await fetch("/api/deposit/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amountIdr: Number(amount), proofUrl }),
+        body: JSON.stringify({
+          amount: Number(amount),
+          paymentMethod: "QRIS",
+          proofUrl,
+        }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -78,19 +82,24 @@ export default function DepositPage() {
   return (
     <div className="wrap">
       <div className="top-bar">
-        <h1>Deposit Saldo Token</h1>
+        <h1>Deposit Saldo</h1>
         <a href="/dashboard" className="link-btn">Kembali</a>
       </div>
-      <p className="muted" style={{ marginBottom: 16 }}>
-        Saldo token dipakai untuk fitur di dalam aplikasi. Ini terpisah dari saldo tugas dan tidak bisa ditarik jadi uang.
-      </p>
+
+      {/* === INFO BARU (sudah digabung) === */}
+      <div className="card" style={{ background: "var(--bg)", borderLeft: "4px solid var(--accent)", marginBottom: 16 }}>
+        <p style={{ margin: 0, fontSize: "0.95rem" }}>
+          💰 Deposit akan menambah <b>saldo utama</b> Anda. 
+          Setelah admin verifikasi, saldo bisa digunakan untuk <b>semua fitur</b> (tugas, lock, penarikan).
+        </p>
+      </div>
 
       {error && <div className="error">{error}</div>}
 
       {done ? (
         <div className="card">
           <div className="success" style={{ marginBottom: 16 }}>
-            Pengajuan deposit terkirim. Saldo token akan masuk setelah admin memverifikasi bukti transfer.
+            ✅ Permintaan deposit berhasil dikirim! Saldo akan masuk setelah admin memverifikasi bukti transfer.
           </div>
           <a href="/dashboard" className="btn">Kembali ke dashboard</a>
         </div>

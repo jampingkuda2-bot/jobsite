@@ -3,7 +3,7 @@ import { getAdminSession } from "@/lib/auth";
 
 export async function GET() {
   try {
-    const admin = getAdminSession();
+    const admin = await getAdminSession(); // tambahkan await
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
     const pendingRes = await query(
@@ -40,7 +40,7 @@ export async function GET() {
 // action: "approve" atau "reject"
 export async function POST(req) {
   try {
-    const admin = getAdminSession();
+    const admin = await getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
     const { submissionId, action, rejectionReason } = await req.json();
@@ -62,60 +62,80 @@ export async function POST(req) {
       return Response.json({ error: "Sudah diproses sebelumnya" }, { status: 400 });
     }
 
-    if (action === "approve") {
-      await query(
-        "update task_submissions set status = 'approved', reviewed_at = now() where id = $1",
-        [submissionId]
-      );
-      await query("update users set saldo = saldo + $1 where id = $2", [
-        sub.reward,
-        sub.user_id,
-      ]);
+    // Mulai transaksi
+    await query("BEGIN");
+    try {
+      if (action === "approve") {
+        // Lock user untuk menghindari race condition
+        await query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [sub.user_id]);
 
-      // Bonus referral: kalau user ini punya pengajak & belum pernah dapat bonus,
-      // ini artinya tugas yang baru disetujui adalah tugas pertama yang berhasil dia kerjakan
-      const referrerRes = await query(
-        "select referred_by, referral_reward_given from users where id = $1",
-        [sub.user_id]
-      );
-      const referrerInfo = referrerRes.rows[0];
-      if (referrerInfo && referrerInfo.referred_by && !referrerInfo.referral_reward_given) {
-        await query("update users set saldo = saldo + 800 where id = $1", [
-          referrerInfo.referred_by,
-        ]);
+        // Update submission status
         await query(
-          "insert into balance_adjustments (user_id, amount, reason) values ($1, 800, 'Bonus referral')",
-          [referrerInfo.referred_by]
+          "UPDATE task_submissions SET status = 'approved', reviewed_at = now() WHERE id = $1",
+          [submissionId]
         );
-        await query("update users set referral_reward_given = true where id = $1", [
-          sub.user_id,
-        ]);
-      }
-    } else {
-      await query(
-        "update task_submissions set status = 'rejected', reviewed_at = now(), rejection_reason = $2 where id = $1",
-        [submissionId, rejectionReason || null]
-      );
-    }
+        // Tambah reward ke withdrawable_balance (bukan saldo)
+        await query(
+          "UPDATE users SET withdrawable_balance = withdrawable_balance + $1 WHERE id = $2",
+          [sub.reward, sub.user_id]
+        );
 
-    return Response.json({ ok: true });
+        // Bonus referral: jika user punya pengajak dan belum pernah dapat bonus
+        const referrerRes = await query(
+          "SELECT referred_by, referral_reward_given FROM users WHERE id = $1",
+          [sub.user_id]
+        );
+        const referrerInfo = referrerRes.rows[0];
+        if (referrerInfo && referrerInfo.referred_by && !referrerInfo.referral_reward_given) {
+          // Lock referrer
+          await query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [referrerInfo.referred_by]);
+          await query(
+            "UPDATE users SET withdrawable_balance = withdrawable_balance + 800 WHERE id = $1",
+            [referrerInfo.referred_by]
+          );
+          await query(
+            "INSERT INTO balance_adjustments (user_id, amount, reason) VALUES ($1, 800, 'Bonus referral')",
+            [referrerInfo.referred_by]
+          );
+          await query(
+            "UPDATE users SET referral_reward_given = true WHERE id = $1",
+            [sub.user_id]
+          );
+        }
+      } else {
+        // Reject: tidak ubah saldo, hanya update status
+        await query(
+          "UPDATE task_submissions SET status = 'rejected', reviewed_at = now(), rejection_reason = $2 WHERE id = $1",
+          [submissionId, rejectionReason || null]
+        );
+      }
+
+      await query("COMMIT");
+      return Response.json({ ok: true });
+    } catch (err) {
+      await query("ROLLBACK");
+      throw err; // lempar ke catch luar
+    }
   } catch (e) {
     console.error("Error di POST /api/admin/submissions:", e);
-    return Response.json({ error: "Gagal memproses. Cek koneksi database." }, { status: 500 });
+    return Response.json(
+      { error: e.message || "Gagal memproses. Cek koneksi database." },
+      { status: 500 }
+    );
   }
 }
 
 // Hapus 1 baris riwayat (hanya yang sudah diproses, bukan yang masih pending)
 export async function DELETE(req) {
   try {
-    const admin = getAdminSession();
+    const admin = await getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
     const { submissionId } = await req.json();
     if (!submissionId) return Response.json({ error: "ID wajib diisi" }, { status: 400 });
 
     await query(
-      "delete from task_submissions where id = $1 and status != 'pending'",
+      "DELETE FROM task_submissions WHERE id = $1 AND status != 'pending'",
       [submissionId]
     );
 

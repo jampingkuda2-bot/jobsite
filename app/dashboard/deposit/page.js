@@ -39,23 +39,35 @@ export default function DepositPage() {
     setUploading(true);
     setError("");
     try {
+      console.log("Uploading proof...");
       const { url } = await uploadChatFile(file);
+      console.log("Upload success:", url);
       setProofUrl(url);
     } catch (err) {
+      console.error("Upload error:", err);
       setError(err.message || "Gagal mengunggah bukti transfer");
     } finally {
       setUploading(false);
+      console.log("Upload finished, uploading =", false);
     }
   }
 
   async function submit(e) {
     e.preventDefault();
     setError("");
+    
+    // Validasi
+    if (!amount || Number(amount) <= 0) {
+      setError("Masukkan jumlah yang valid");
+      return;
+    }
     if (!proofUrl) {
       setError("Wajib upload bukti transfer dulu");
       return;
     }
+    
     setLoading(true);
+    console.log("Submitting deposit request...");
     try {
       const res = await fetch("/api/deposit/request", {
         method: "POST",
@@ -67,15 +79,18 @@ export default function DepositPage() {
         }),
       });
       const d = await res.json().catch(() => ({}));
+      console.log("Response:", res.status, d);
       if (!res.ok) {
         setError(d.error || `Gagal mengajukan deposit (error ${res.status})`);
         return;
       }
       setDone(true);
     } catch (err) {
+      console.error("Submit error:", err);
       setError("Tidak bisa terhubung ke server.");
     } finally {
       setLoading(false);
+      console.log("Submit finished, loading =", false);
     }
   }
 
@@ -86,7 +101,7 @@ export default function DepositPage() {
         <a href="/dashboard" className="link-btn">Kembali</a>
       </div>
 
-      {/* === INFO BARU (sudah digabung) === */}
+      {/* === INFO BARU === */}
       <div className="card" style={{ background: "var(--bg)", borderLeft: "4px solid var(--accent)", marginBottom: 16 }}>
         <p style={{ margin: 0, fontSize: "0.95rem" }}>
           💰 Deposit akan menambah <b>saldo utama</b> Anda. 
@@ -144,12 +159,20 @@ export default function DepositPage() {
               )}
             </div>
 
-            <button disabled={loading || uploading}>
+            <button 
+              type="submit" 
+              disabled={loading || uploading || !proofUrl || !amount}
+            >
               {loading ? "Mengirim..." : "Kirim Permintaan Deposit"}
             </button>
+            {(!proofUrl || !amount) && !loading && !uploading && (
+              <p className="muted" style={{ marginTop: 8, fontSize: "0.85rem" }}>
+                {!amount ? "⚠️ Isi jumlah terlebih dahulu" : "⚠️ Upload bukti transfer terlebih dahulu"}
+              </p>
+            )}
           </form>
         </div>
       )}
     </div>
   );
-}
+                }

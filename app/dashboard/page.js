@@ -61,8 +61,6 @@ export default function DashboardPage() {
     </div>
   );
 
-  const totalSaldo = (data.user.token_balance || 0) + (data.user.withdrawable_balance || 0);
-
   return (
     <div className="wrap">
       {announcement && (
@@ -79,24 +77,28 @@ export default function DashboardPage() {
         <button className="link-btn" onClick={logout}>Keluar</button>
       </div>
 
-      {/* === CARD SALDO DENGAN TIGA BARIS === */}
+      {/* === CARD SALDO GABUNGAN (Total, Terkunci, Tersedia) === */}
       <div className="balance-card">
         <div className="balance-row">
           <div>
-            <div className="balance-label">Saldo Token</div>
-            <div className="balance-value">{formatRupiah(data.user.token_balance ?? 0)}</div>
+            <div className="balance-label">Total Saldo</div>
+            <div className="balance-value">{formatRupiah(data.user.saldo ?? 0)}</div>
           </div>
           <a href="/dashboard/deposit" className="btn" style={{ padding: "6px 14px", fontSize: "0.85rem", textDecoration: "none" }}>
             + Top-up
           </a>
         </div>
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, marginTop: 4 }}>
-          <div className="balance-label">Saldo Tarik</div>
-          <div className="balance-value">{formatRupiah(data.user.withdrawable_balance ?? 0)}</div>
+          <div className="balance-label">Terkunci</div>
+          <div className="balance-value" style={{ color: "var(--muted)" }}>
+            {formatRupiah(data.user.total_locked ?? 0)}
+          </div>
         </div>
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, marginTop: 4 }}>
-          <div className="balance-label">Total Saldo</div>
-          <div className="balance-value" style={{ color: "var(--accent)" }}>{formatRupiah(totalSaldo)}</div>
+          <div className="balance-label">Tersedia (bisa ditarik & dikunci)</div>
+          <div className="balance-value" style={{ color: "var(--accent)" }}>
+            {formatRupiah(data.user.available_balance ?? 0)}
+          </div>
         </div>
         <a href="/dashboard/tarik" className="btn" style={{ marginTop: 16, display: "block" }}>
           Tarik saldo ke DANA
@@ -107,7 +109,7 @@ export default function DashboardPage() {
       <a href="/dashboard/deposit" className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none" }}>
         <div>
           <h2 style={{ marginBottom: 2 }}>Deposit</h2>
-          <span className="muted">Top-up saldo token via QRIS/transfer</span>
+          <span className="muted">Top-up saldo via QRIS/transfer</span>
         </div>
         <span style={{ color: "var(--accent)", fontWeight: 700 }}>›</span>
       </a>
@@ -224,6 +226,23 @@ export default function DashboardPage() {
             </div>
             <span className={`badge ${w.status === "done" ? "done" : w.status === "rejected" ? "rejected" : "pending"}`}>
               {w.status === "done" ? "Selesai" : w.status === "rejected" ? "Ditolak" : "Diproses"}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* === TAMBAHAN: Riwayat deposit === */}
+      <div className="card">
+        <h2>Riwayat deposit</h2>
+        {(!data.deposits || data.deposits.length === 0) && <p className="muted">Belum ada riwayat deposit.</p>}
+        {data.deposits && data.deposits.map((d) => (
+          <div key={d.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+            <div>
+              <div>{formatRupiah(d.amount)}</div>
+              <span className="muted">{d.payment_method} · {new Date(d.requested_at).toLocaleDateString("id-ID")}</span>
+            </div>
+            <span className={`badge ${d.status}`}>
+              {d.status === "pending" ? "Menunggu" : d.status === "approved" ? "Disetujui" : "Ditolak"}
             </span>
           </div>
         ))}

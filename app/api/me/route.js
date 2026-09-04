@@ -6,16 +6,39 @@ export async function GET() {
     const session = await getUserSession();
     if (!session) return Response.json({ error: "Belum login" }, { status: 401 });
 
-    // MULAI TRANSAKSI UNTUK UNLOCK OTOMATIS
+        // MULAI TRANSAKSI UNTUK UNLOCK OTOMATIS
     await query("BEGIN");
     try {
-      // Cari lock yang sudah jatuh tempo dan masih aktif
       const dueLocks = await query(
         `SELECT id, user_id, amount, bonus_amount
          FROM balance_locks
          WHERE user_id = $1 AND status = 'active' AND unlocks_at <= NOW()`,
         [session.userId]
       );
+
+      for (const lock of dueLocks.rows) {
+        await query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [lock.user_id]);
+
+        // Kembalikan pokok + bonus ke saldo (users.saldo)
+        const total = Number(lock.amount) + Number(lock.bonus_amount);
+        await query(
+          "UPDATE users SET saldo = saldo + $1 WHERE id = $2",
+          [total, lock.user_id]
+        );
+
+        await query(
+          `UPDATE balance_locks
+           SET status = 'completed', completed_at = NOW()
+           WHERE id = $1`,
+          [lock.id]
+        );
+      }
+
+      await query("COMMIT");
+    } catch (err) {
+      await query("ROLLBACK");
+      throw err;
+    }
 
       for (const lock of dueLocks.rows) {
         // Kunci baris user

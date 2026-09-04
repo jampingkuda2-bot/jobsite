@@ -4,7 +4,7 @@ import { generateRefCode } from "@/lib/codes";
 
 export async function POST(req) {
   try {
-    const session = await getUserSession(); // tambahkan await
+    const session = await getUserSession();
     if (!session) return Response.json({ error: "Belum login" }, { status: 401 });
 
     const { amount, danaNumber, danaName } = await req.json();
@@ -17,7 +17,7 @@ export async function POST(req) {
       return Response.json({ error: "Nomor DANA tidak valid" }, { status: 400 });
     }
 
-    // Cek apakah ada penarikan pending (di luar transaksi, tidak masalah)
+    // Cek pending (di luar transaksi)
     const pending = await query(
       "SELECT id FROM withdrawals WHERE user_id = $1 AND status = 'pending'",
       [session.userId]
@@ -29,28 +29,34 @@ export async function POST(req) {
       );
     }
 
-    // MULAI TRANSAKSI
     await query("BEGIN");
     try {
-      // Lock baris user
+      // Lock user
       const userRes = await query(
-        "SELECT withdrawable_balance FROM users WHERE id = $1 FOR UPDATE",
+        "SELECT saldo FROM users WHERE id = $1 FOR UPDATE",
         [session.userId]
       );
       if (userRes.rows.length === 0) throw new Error("User tidak ditemukan");
 
-      const withdrawable = Number(userRes.rows[0].withdrawable_balance);
-      if (amt > withdrawable) {
-        throw new Error("Saldo tidak mencukupi");
+      // Hitung total lock aktif
+      const lockedRes = await query(
+        "SELECT COALESCE(SUM(amount), 0)::BIGINT AS total_locked FROM balance_locks WHERE user_id = $1 AND status = 'active'",
+        [session.userId]
+      );
+      const totalLocked = Number(lockedRes.rows[0].total_locked);
+      const available = Number(userRes.rows[0].saldo) - totalLocked;
+
+      if (amt > available) {
+        throw new Error(`Saldo tersedia hanya Rp${available.toLocaleString("id-ID")}`);
       }
 
-      // Kurangi withdrawable_balance
+      // Kurangi saldo utama
       await query(
-        "UPDATE users SET withdrawable_balance = withdrawable_balance - $1 WHERE id = $2",
+        "UPDATE users SET saldo = saldo - $1 WHERE id = $2",
         [amt, session.userId]
       );
 
-      // Generate kode referensi (dengan retry)
+      // Insert withdrawal
       let refCode;
       let inserted = false;
       for (let attempt = 0; attempt < 8 && !inserted; attempt++) {
@@ -64,13 +70,11 @@ export async function POST(req) {
           );
           inserted = true;
         } catch (e) {
-          if (e.code !== "23505") throw e; // bukan error duplikat
-          // else lanjut retry
+          if (e.code !== "23505") throw e;
         }
       }
 
       if (!inserted) {
-        // Gagal insert karena bentrok kode, rollback perubahan saldo
         await query("ROLLBACK");
         return Response.json(
           { error: "Gagal membuat kode penarikan, coba lagi." },

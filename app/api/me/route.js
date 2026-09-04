@@ -3,11 +3,55 @@ import { getUserSession } from "@/lib/auth";
 
 export async function GET() {
   try {
-    const session = getUserSession();
+    const session = await getUserSession();
     if (!session) return Response.json({ error: "Belum login" }, { status: 401 });
 
+    // MULAI TRANSAKSI UNTUK UNLOCK OTOMATIS
+    await query("BEGIN");
+    try {
+      // Cari lock yang sudah jatuh tempo dan masih aktif
+      const dueLocks = await query(
+        `SELECT id, user_id, amount, bonus_amount
+         FROM balance_locks
+         WHERE user_id = $1 AND status = 'active' AND unlocks_at <= NOW()`,
+        [session.userId]
+      );
+
+      for (const lock of dueLocks.rows) {
+        // Kunci baris user
+        await query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [lock.user_id]);
+
+        // Kembalikan pokok ke token_balance
+        await query(
+          "UPDATE users SET token_balance = token_balance + $1 WHERE id = $2",
+          [lock.amount, lock.user_id]
+        );
+
+        // Tambahkan bonus ke withdrawable_balance
+        await query(
+          "UPDATE users SET withdrawable_balance = withdrawable_balance + $1 WHERE id = $2",
+          [lock.bonus_amount, lock.user_id]
+        );
+
+        // Update status lock
+        await query(
+          `UPDATE balance_locks
+           SET status = 'completed', completed_at = NOW()
+           WHERE id = $1`,
+          [lock.id]
+        );
+      }
+
+      await query("COMMIT");
+    } catch (err) {
+      await query("ROLLBACK");
+      throw err;
+    }
+
+    // Ambil data user terbaru (termasuk dua saldo)
     const userRes = await query(
-      "select id, email, username, saldo from users where id = $1",
+      `SELECT id, email, username, token_balance, withdrawable_balance
+       FROM users WHERE id = $1`,
       [session.userId]
     );
     if (userRes.rows.length === 0) {
@@ -15,71 +59,75 @@ export async function GET() {
     }
     const user = userRes.rows[0];
 
-    // Cairkan otomatis kunci saldo yang sudah lewat masanya (kalau ada)
-    const dueLocks = await query(
-      "select id, amount, bonus_amount from balance_locks where user_id = $1 and status = 'active' and unlocks_at <= now()",
-      [user.id]
-    );
-    for (const lock of dueLocks.rows) {
-      const total = Number(lock.amount) + Number(lock.bonus_amount);
-      await query("update users set saldo = saldo + $1 where id = $2", [total, user.id]);
-      await query("update balance_locks set status = 'completed', completed_at = now() where id = $1", [lock.id]);
-    }
-    if (dueLocks.rows.length > 0) {
-      const refreshed = await query("select saldo from users where id = $1", [user.id]);
-      user.saldo = refreshed.rows[0].saldo;
-    }
-
+    // Ambil daftar tugas tersedia
     const tasksRes = await query(
-      `select t.id, t.task_code, t.title, t.description, t.notes, t.link, t.reward,
+      `SELECT t.id, t.task_code, t.title, t.description, t.notes, t.link, t.reward,
               t.requires_screenshot, t.requires_video, t.example_images
-       from tasks t
-       where t.is_active = true
-         and (t.target_user_id is null or t.target_user_id = $1)
-         and (t.expires_at is null or t.expires_at > now())
-         and not exists (
-           select 1 from task_submissions s
-           where s.task_id = t.id and s.status in ('pending', 'approved')
+       FROM tasks t
+       WHERE t.is_active = true
+         AND (t.target_user_id IS NULL OR t.target_user_id = $1)
+         AND (t.expires_at IS NULL OR t.expires_at > NOW())
+         AND NOT EXISTS (
+           SELECT 1 FROM task_submissions s
+           WHERE s.task_id = t.id AND s.user_id = $1 AND s.status IN ('pending', 'approved')
          )
-       order by t.created_at desc`,
+       ORDER BY t.created_at DESC`,
       [user.id]
     );
 
+    // Ambil riwayat submit tugas
     const submissionsRes = await query(
-      `select s.id, s.status, s.submitted_at, s.rejection_reason, t.title, t.reward
-       from task_submissions s
-       join tasks t on t.id = s.task_id
-       where s.user_id = $1
-       order by s.submitted_at desc
-       limit 50`,
+      `SELECT s.id, s.status, s.submitted_at, s.rejection_reason, t.title, t.reward
+       FROM task_submissions s
+       JOIN tasks t ON t.id = s.task_id
+       WHERE s.user_id = $1
+       ORDER BY s.submitted_at DESC
+       LIMIT 50`,
       [user.id]
     );
 
+    // Ambil riwayat penarikan
     const withdrawalsRes = await query(
-      `select id, ref_code, amount, dana_number, status, requested_at, completed_at
-       from withdrawals where user_id = $1
-       order by requested_at desc limit 50`,
+      `SELECT id, ref_code, amount, dana_number, status, requested_at, completed_at
+       FROM withdrawals
+       WHERE user_id = $1
+       ORDER BY requested_at DESC
+       LIMIT 50`,
       [user.id]
     );
 
+    // Ambil data referral
     const referralCountRes = await query(
-      "select count(*)::int as count from users where referred_by = $1",
+      "SELECT COUNT(*)::INT AS count FROM users WHERE referred_by = $1",
       [user.id]
     );
     const referralEarnedRes = await query(
-      "select coalesce(sum(amount), 0)::bigint as total from balance_adjustments where user_id = $1 and reason = 'Bonus referral'",
+      `SELECT COALESCE(SUM(amount), 0)::BIGINT AS total
+       FROM balance_adjustments
+       WHERE user_id = $1 AND reason = 'Bonus referral'`,
       [user.id]
     );
 
+    // Ambil riwayat lock
     const locksRes = await query(
-      `select id, amount, duration_days, bonus_percent, bonus_amount, status, locked_at, unlocks_at, completed_at
-       from balance_locks where user_id = $1
-       order by locked_at desc limit 50`,
+      `SELECT id, amount, duration_days, bonus_percent, bonus_amount,
+              status, locked_at, unlocks_at, completed_at
+       FROM balance_locks
+       WHERE user_id = $1
+       ORDER BY locked_at DESC
+       LIMIT 50`,
       [user.id]
     );
 
     return Response.json({
-      user: { email: user.email, username: user.username, saldo: Number(user.saldo) },
+      user: {
+        email: user.email,
+        username: user.username,
+        token_balance: Number(user.token_balance),
+        withdrawable_balance: Number(user.withdrawable_balance),
+        // Kolom saldo masih disertakan untuk kompatibilitas (opsional)
+        saldo: Number(user.token_balance) + Number(user.withdrawable_balance),
+      },
       tasks: tasksRes.rows,
       submissions: submissionsRes.rows,
       withdrawals: withdrawalsRes.rows,
@@ -87,10 +135,17 @@ export async function GET() {
         count: referralCountRes.rows[0].count,
         earned: Number(referralEarnedRes.rows[0].total),
       },
-      locks: locksRes.rows.map((l) => ({ ...l, amount: Number(l.amount), bonus_amount: Number(l.bonus_amount) })),
+      locks: locksRes.rows.map((l) => ({
+        ...l,
+        amount: Number(l.amount),
+        bonus_amount: Number(l.bonus_amount),
+      })),
     });
   } catch (e) {
     console.error("Error di GET /api/me:", e);
-    return Response.json({ error: "Gagal memuat data. Cek koneksi database." }, { status: 500 });
+    return Response.json(
+      { error: "Gagal memuat data. Cek koneksi database." },
+      { status: 500 }
+    );
   }
 }

@@ -104,7 +104,7 @@ export default function DashboardPage() {
       <div className="card">
         <h2>Check-in Harian</h2>
         <p className="muted" style={{ marginBottom: 12 }}>
-          Klik sekali sehari, dapat <b style={{ color: "var(--accent)" }}>Rp500</b> gratis.
+          Klik sekali sehari, dapat <b style={{ color: "var(--accent)" }}>Rp200</b> gratis.
         </p>
         <button onClick={doCheckin} disabled={checkinBusy || data.checkedInToday}>
           {data.checkedInToday ? "Sudah check-in hari ini" : checkinBusy ? "Memproses..." : "Check-in sekarang"}

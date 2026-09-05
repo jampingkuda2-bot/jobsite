@@ -132,6 +132,13 @@ export async function GET() {
       [user.id]
     );
 
+    // ================= TAMBAHAN: Status check-in hari ini =================
+    const checkinRes = await query(
+      "select id from daily_checkins where user_id = $1 and checkin_date = current_date",
+      [user.id]
+    );
+    const checkedInToday = checkinRes.rows.length > 0;
+
     return Response.json({
       user: {
         email: user.email,
@@ -158,6 +165,7 @@ export async function GET() {
         ...d,
         amount: Number(d.amount),
       })),
+      checkedInToday,
     });
   } catch (e) {
     console.error("Error di GET /api/me:", e);

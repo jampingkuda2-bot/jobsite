@@ -49,8 +49,36 @@ export default function AdminChatPage() {
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
+
+  async function loadAiSettings() {
+    try {
+      const res = await fetch("/api/admin/ai-chat-settings");
+      const d = await res.json().catch(() => ({}));
+      if (res.ok) setAiEnabled(d.enabled || false);
+    } catch (e) {
+      // diamkan, bukan bagian kritis
+    }
+  }
+
+  async function toggleAi(checked) {
+    setAiEnabled(checked);
+    setAiSaving(true);
+    try {
+      await fetch("/api/admin/ai-chat-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: checked }),
+      });
+    } catch (e) {
+      setError("Gagal menyimpan pengaturan AI.");
+    } finally {
+      setAiSaving(false);
+    }
+  }
 
   async function loadConversations() {
     try {
@@ -86,6 +114,7 @@ export default function AdminChatPage() {
 
   useEffect(() => {
     loadConversations();
+    loadAiSettings();
     const interval = setInterval(loadConversations, 8000);
     return () => clearInterval(interval);
   }, []);
@@ -155,6 +184,17 @@ export default function AdminChatPage() {
 
       {!selected ? (
         <div className="card">
+          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 16 }}>
+            <input
+              type="checkbox"
+              checked={aiEnabled}
+              onChange={(e) => toggleAi(e.target.checked)}
+              disabled={aiSaving}
+              style={{ width: "auto" }}
+            />
+            Aktifkan balasan otomatis AI
+          </label>
+
           <h2>Percakapan</h2>
           {conversations === null && <p className="muted">Memuat...</p>}
           {conversations && conversations.length === 0 && (
@@ -179,7 +219,7 @@ export default function AdminChatPage() {
                 )}
               </div>
               <p className="muted" style={{ margin: "4px 0" }}>
-                {c.last_sender === "admin" ? "Anda: " : ""}{c.last_message || "(lampiran)"}
+                {c.last_sender === "admin" ? "Anda: " : c.last_sender === "ai" ? "🤖 AI: " : ""}{c.last_message || "(lampiran)"}
               </p>
               <p className="muted" style={{ fontSize: "0.75rem" }}>
                 {formatWaktu(c.last_at)} · <span style={{ color: presence.online ? "var(--accent)" : undefined }}>{presence.text}</span>
@@ -206,11 +246,11 @@ export default function AdminChatPage() {
               <div
                 key={m.id}
                 style={{
-                  alignSelf: m.sender === "admin" ? "flex-end" : "flex-start",
+                  alignSelf: (m.sender === "admin" || m.sender === "ai") ? "flex-end" : "flex-start",
                   maxWidth: "80%",
-                  background: m.sender === "admin" ? "var(--accent)" : "var(--panel-2)",
-                  color: m.sender === "admin" ? "#06140f" : "var(--text)",
-                  border: m.sender === "admin" ? "none" : "1px solid var(--border)",
+                  background: m.sender === "admin" ? "var(--accent)" : m.sender === "ai" ? "var(--accent-dark)" : "var(--panel-2)",
+                  color: (m.sender === "admin" || m.sender === "ai") ? "#06140f" : "var(--text)",
+                  border: (m.sender === "admin" || m.sender === "ai") ? "none" : "1px solid var(--border)",
                   borderRadius: 16,
                   padding: "10px 14px",
                   overflowWrap: "anywhere",
@@ -219,7 +259,7 @@ export default function AdminChatPage() {
                 {m.message && <div style={{ fontSize: "0.95rem" }}>{m.message}</div>}
                 {m.attachment_url && <Attachment url={m.attachment_url} type={m.attachment_type} />}
                 <div style={{ fontSize: "0.7rem", opacity: 0.7, marginTop: 4 }}>
-                  {formatJam(m.created_at)}
+                  {m.sender === "ai" ? "🤖 AI · " : ""}{formatJam(m.created_at)}
                 </div>
               </div>
             ))}

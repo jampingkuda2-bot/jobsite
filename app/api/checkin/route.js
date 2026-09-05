@@ -16,6 +16,18 @@ export async function POST() {
       return Response.json({ error: "Sudah check-in hari ini" }, { status: 400 });
     }
 
+    // Wajib udah kirim minimal 1 tugas hari ini (gak perlu nunggu disetujui admin)
+    const didTaskToday = await query(
+      "select id from task_submissions where user_id = $1 and submitted_at::date = current_date limit 1",
+      [session.userId]
+    );
+    if (didTaskToday.rows.length === 0) {
+      return Response.json(
+        { error: "Kerjakan minimal 1 tugas dulu hari ini sebelum check-in" },
+        { status: 400 }
+      );
+    }
+
     await query(
       "insert into daily_checkins (user_id, checkin_date) values ($1, current_date)",
       [session.userId]

@@ -13,6 +13,8 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [announcement, setAnnouncement] = useState(null);
+  const [checkinBusy, setCheckinBusy] = useState(false);
+  const [leaderboard, setLeaderboard] = useState(null);
 
   async function load() {
     try {
@@ -38,7 +40,29 @@ export default function DashboardPage() {
       .then((res) => res.json())
       .then((d) => setAnnouncement(d.message))
       .catch(() => {});
+    fetch("/api/leaderboard")
+      .then((res) => res.json())
+      .then((d) => setLeaderboard(d.leaderboard || []))
+      .catch(() => setLeaderboard([]));
   }, []);
+
+  async function doCheckin() {
+    setCheckinBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/checkin", { method: "POST" });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || "Gagal check-in");
+        return;
+      }
+      load();
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setCheckinBusy(false);
+    }
+  }
 
   async function logout() {
     await fetch("/api/logout", { method: "POST" });
@@ -75,6 +99,16 @@ export default function DashboardPage() {
           <span className="muted">{data.user.email}</span>
         </div>
         <button className="link-btn" onClick={logout}>Keluar</button>
+      </div>
+
+      <div className="card">
+        <h2>Check-in Harian</h2>
+        <p className="muted" style={{ marginBottom: 12 }}>
+          Klik sekali sehari, dapat <b style={{ color: "var(--accent)" }}>Rp500</b> gratis.
+        </p>
+        <button onClick={doCheckin} disabled={checkinBusy || data.checkedInToday}>
+          {data.checkedInToday ? "Sudah check-in hari ini" : checkinBusy ? "Memproses..." : "Check-in sekarang"}
+        </button>
       </div>
 
       {/* === CARD SALDO GABUNGAN (TANPA TOMBOL TOP-UP) === */}
@@ -145,6 +179,21 @@ export default function DashboardPage() {
         <button className="secondary" onClick={copyReferralLink}>
           {copied ? "Tersalin!" : "Salin link ajakan"}
         </button>
+      </div>
+
+      <div className="card">
+        <h2>Leaderboard Bulan Ini</h2>
+        {leaderboard === null && <p className="muted">Memuat...</p>}
+        {leaderboard && leaderboard.length === 0 && <p className="muted">Belum ada data bulan ini.</p>}
+        {leaderboard && leaderboard.map((r, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+            <div>
+              <span className="muted" style={{ marginRight: 8 }}>#{i + 1}</span>
+              {r.username}
+            </div>
+            <b style={{ color: "var(--accent)" }}>{formatRupiah(r.total)}</b>
+          </div>
+        ))}
       </div>
 
       {error && <div className="error">{error}</div>}

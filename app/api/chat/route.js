@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { getUserSession } from "@/lib/auth";
+import { generateAiReply } from "@/lib/ai";
 
 export async function GET() {
   try {
@@ -59,6 +60,25 @@ export async function POST(req) {
     await query("update users set last_active_at = now() where id = $1", [
       session.userId,
     ]);
+
+    // ================= TAMBAHAN: Balasan otomatis AI (kalau diaktifkan admin) =================
+    try {
+      const aiSettings = await query("select enabled from ai_chat_settings where id = 1");
+      if (aiSettings.rows[0]?.enabled) {
+        const historyRes = await query(
+          `select sender, message from chat_messages where user_id = $1 order by created_at desc limit 12`,
+          [session.userId]
+        );
+        const history = historyRes.rows.reverse();
+        const reply = await generateAiReply(history);
+        await query(
+          "insert into chat_messages (user_id, sender, message) values ($1, 'ai', $2)",
+          [session.userId, reply.slice(0, 2000)]
+        );
+      }
+    } catch (aiErr) {
+      console.error("Gagal generate balasan AI (diabaikan, pesan user tetap terkirim):", aiErr.message);
+    }
 
     return Response.json({ ok: true });
   } catch (e) {

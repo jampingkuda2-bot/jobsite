@@ -152,7 +152,7 @@ export default function ChatPage() {
             {m.message && <div style={{ fontSize: "0.95rem" }}>{m.message}</div>}
             {m.attachment_url && <Attachment url={m.attachment_url} type={m.attachment_type} />}
             <div style={{ fontSize: "0.7rem", opacity: 0.7, marginTop: 4 }}>
-              {m.sender === "admin" ? "Admin · " : ""}{formatJam(m.created_at)}
+              {m.sender === "admin" ? "Admin · " : m.sender === "ai" ? "🤖 AI · " : ""}{formatJam(m.created_at)}
             </div>
           </div>
         ))}

@@ -96,6 +96,7 @@ export default function DashboardPage() {
   const [checkinBusy, setCheckinBusy] = useState(false);
   const [leaderboard, setLeaderboard] = useState(null);
   const [historyTab, setHistoryTab] = useState("tugas");
+  const [showAllTasks, setShowAllTasks] = useState(false);
 
   async function load() {
     try {
@@ -253,10 +254,10 @@ export default function DashboardPage() {
         <button className="secondary" onClick={copyReferralLink}>
           {copied ? "Tersalin!" : "Salin link ajakan"}
         </button>
-      </div>
 
-      <div className="card">
-        <h2>Leaderboard Bulan Ini</h2>
+        <h2 style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+          Leaderboard Bulan Ini
+        </h2>
         {leaderboard === null && <p className="muted">Memuat...</p>}
         {leaderboard && leaderboard.length === 0 && <p className="muted">Belum ada data bulan ini.</p>}
         {leaderboard && leaderboard.map((r, i) => (
@@ -276,7 +277,7 @@ export default function DashboardPage() {
         {data.tasks.length === 0 && (
           <p className="muted">Belum ada tugas tersedia saat ini. Cek lagi nanti.</p>
         )}
-        {data.tasks.map((t) => (
+        {(showAllTasks ? data.tasks : data.tasks.slice(0, 3)).map((t) => (
           <a href={`/dashboard/tugas?id=${t.id}`} className="task-item" key={t.id} style={{ display: "block", textDecoration: "none" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div className="reward">{formatRupiah(t.reward)}</div>
@@ -290,6 +291,16 @@ export default function DashboardPage() {
             )}
           </a>
         ))}
+        {data.tasks.length > 3 && (
+          <button
+            type="button"
+            className="secondary"
+            style={{ marginTop: 8 }}
+            onClick={() => setShowAllTasks((v) => !v)}
+          >
+            {showAllTasks ? "Tampilkan lebih sedikit" : `Lihat semua (${data.tasks.length})`}
+          </button>
+        )}
       </div>
 
       {/* === RIWAYAT & SALDO TERKUNCI: digabung jadi 1 card pakai tab, biar nggak makan tempat === */}
@@ -416,4 +427,5 @@ export default function DashboardPage() {
       `}</style>
     </div>
   );
-}
+          }
+          

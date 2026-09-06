@@ -109,6 +109,7 @@ export default function DashboardPage() {
         <button onClick={doCheckin} disabled={checkinBusy || data.checkedInToday}>
           {data.checkedInToday ? "Sudah check-in hari ini" : checkinBusy ? "Memproses..." : "Check-in sekarang"}
         </button>
+        {error && <div className="error" style={{ marginTop: 12 }}>{error}</div>}
       </div>
 
       {/* === CARD SALDO GABUNGAN (TANPA TOMBOL TOP-UP) === */}
@@ -195,8 +196,6 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
-
-      {error && <div className="error">{error}</div>}
 
       <div className="card">
         <h2>Tugas tersedia</h2>
@@ -311,4 +310,5 @@ export default function DashboardPage() {
       `}</style>
     </div>
   );
-          }
+            }
+          

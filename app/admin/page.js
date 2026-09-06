@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNav from "./AdminNav";
 import EnableNotificationsButton from "@/components/EnableNotificationsButton";
+import AppIconUploader from "@/components/AppIconUploader";
 
 function formatRupiah(n) {
   return "Rp" + Number(n).toLocaleString("id-ID");
@@ -152,6 +153,8 @@ export default function AdminUsersPage() {
       <div className="card">
         <EnableNotificationsButton />
       </div>
+
+      <AppIconUploader />
 
       <div className="card">
         <h2>Teks berjalan (running text)</h2>

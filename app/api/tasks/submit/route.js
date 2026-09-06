@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { getUserSession } from "@/lib/auth";
+import { sendPushToAdmin } from "@/lib/push";
 
 export async function POST(req) {
   try {
@@ -44,6 +45,17 @@ export async function POST(req) {
        values ($1, $2, 'pending', $3, $4)`,
       [session.userId, taskId, screenshotUrl || null, videoUrl || null]
     );
+
+    // Kirim push notification ke admin (diabaikan kalau gagal)
+    try {
+      await sendPushToAdmin({
+        title: "Ada tugas baru masuk",
+        body: "Seorang user mengirim bukti tugas, cek panel admin untuk review.",
+        url: "/admin/pending",
+      });
+    } catch (pushErr) {
+      console.error("Gagal kirim push ke admin:", pushErr.message);
+    }
 
     return Response.json({ ok: true });
   } catch (e) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import "@/lib/pwaInstall"; // sekadar diimpor supaya listener beforeinstallprompt aktif sejak awal
 
 export default function ServiceWorkerRegister() {
   useEffect(() => {

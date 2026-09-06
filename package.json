@@ -15,6 +15,6 @@
     "bcryptjs": "2.4.3",
     "jsonwebtoken": "9.0.2",
     "resend": "3.4.0"
-    "web-push": "^3.6.7"
+    "web-push": "3.6.7"
   }
 }

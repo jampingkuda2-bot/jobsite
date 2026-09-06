@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
+import { sendPushToUser } from "@/lib/push";
 
 export async function GET() {
   try {
@@ -71,6 +72,25 @@ export async function POST(req) {
         w.amount,
         w.user_id,
       ]);
+    }
+
+    // Kirim push notification ke user (diabaikan kalau gagal)
+    try {
+      if (action === "done") {
+        await sendPushToUser(w.user_id, {
+          title: "Penarikan selesai ✅",
+          body: `Penarikan Rp${Number(w.amount).toLocaleString("id-ID")} sudah dikirim ke DANA.`,
+          url: "/dashboard",
+        });
+      } else {
+        await sendPushToUser(w.user_id, {
+          title: "Penarikan ditolak",
+          body: `Penarikan Rp${Number(w.amount).toLocaleString("id-ID")} ditolak, saldo dikembalikan.`,
+          url: "/dashboard",
+        });
+      }
+    } catch (pushErr) {
+      console.error("Gagal kirim push ke user:", pushErr.message);
     }
 
     return Response.json({ ok: true });

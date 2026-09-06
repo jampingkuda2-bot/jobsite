@@ -1,55 +1,301 @@
-import { query } from "@/lib/db";
-import { getUserSession } from "@/lib/auth";
+"use client";
 
-export async function POST(req) {
-  try {
-    const session = await getUserSession();
-    if (!session) return Response.json({ error: "Belum login" }, { status: 401 });
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { uploadProfilePhoto } from "@/lib/uploadProfilePhoto";
 
-    const { username, photoUrl } = await req.json();
+export default function ProfilePage() {
+  const router = useRouter();
+  const [tab, setTab] = useState("profil"); // "profil" | "password"
+  const [data, setData] = useState(null);
+  const [username, setUsername] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
-    if (username !== undefined) {
-      const trimmed = String(username).trim();
-      if (trimmed.length < 3) {
-        return Response.json(
-          { error: "Username minimal 3 karakter" },
-          { status: 400 }
-        );
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  const fileRef = useRef(null);
+
+  async function load() {
+    try {
+      const res = await fetch("/api/me");
+      if (res.status === 401) return router.push("/login");
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || `Gagal memuat data (error ${res.status})`);
+        return;
       }
-      if (!/^[a-z0-9_]+$/.test(trimmed)) {
-        return Response.json(
-          { error: "Username cuma boleh huruf kecil, angka, dan underscore, tanpa spasi" },
-          { status: 400 }
-        );
-      }
-
-      const taken = await query(
-        "select id from users where username = $1 and id != $2",
-        [trimmed, session.userId]
-      );
-      if (taken.rows.length > 0) {
-        return Response.json({ error: "Username sudah dipakai" }, { status: 400 });
-      }
-
-      await query("update users set username = $1 where id = $2", [
-        trimmed,
-        session.userId,
-      ]);
+      setData(d);
+      setUsername(d.user.username);
+      setPhotoUrl(d.user.photo_url || "");
+    } catch (e) {
+      setError("Tidak bisa terhubung ke server.");
     }
-
-    if (photoUrl !== undefined) {
-      await query("update users set photo_url = $1 where id = $2", [
-        photoUrl,
-        session.userId,
-      ]);
-    }
-
-    return Response.json({ ok: true });
-  } catch (e) {
-    console.error("Error di POST /api/profile:", e);
-    return Response.json(
-      { error: "Gagal menyimpan profil. Cek koneksi database." },
-      { status: 500 }
-    );
   }
-}
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function handlePhotoChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError("");
+    setNotice("");
+    try {
+      const url = await uploadProfilePhoto(file);
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoUrl: url }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || "Gagal menyimpan foto");
+        return;
+      }
+      setPhotoUrl(url);
+      setNotice("Foto profil diperbarui.");
+    } catch (err) {
+      setError(err.message || "Gagal mengunggah foto");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function saveProfile(e) {
+    e.preventDefault();
+    setError("");
+    setNotice("");
+    setSavingProfile(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || "Gagal menyimpan profil");
+        return;
+      }
+      setNotice("Profil disimpan.");
+      load();
+    } catch (err) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
+  async function savePassword(e) {
+    e.preventDefault();
+    setError("");
+    setNotice("");
+    if (newPassword !== confirmPassword) {
+      setError("Konfirmasi password baru tidak cocok");
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      const res = await fetch("/api/profile/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || "Gagal mengganti password");
+        return;
+      }
+      setNotice("Password berhasil diganti.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setSavingPassword(false);
+    }
+  }
+
+  if (!data) return <div className="wrap"><p className="muted">Memuat...</p></div>;
+
+  return (
+    <div className="wrap">
+      <div className="top-bar" style={{ marginBottom: 16 }}>
+        <h1>Profil Saya</h1>
+        <button className="link-btn" onClick={() => router.push("/dashboard")}>‹ Kembali</button>
+      </div>
+
+      <div className="card" style={{ display: "flex", gap: 16, alignItems: "center" }}>
+        {photoUrl ? (
+          <img
+            src={photoUrl}
+            alt="Foto profil"
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: "50%",
+              objectFit: "cover",
+              border: "1px solid var(--border)",
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: "50%",
+              background: "var(--panel-2)",
+              border: "1px solid var(--border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.5rem",
+              fontWeight: 700,
+              color: "var(--muted)",
+            }}
+          >
+            {data.user.username?.[0]?.toUpperCase() || "?"}
+          </div>
+        )}
+        <div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            onChange={handlePhotoChange}
+            style={{ display: "none" }}
+          />
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? "Mengunggah..." : "Ganti foto"}
+          </button>
+        </div>
+      </div>
+
+      {error && <div className="error">{error}</div>}
+      {notice && <div className="success">{notice}</div>}
+
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
+          <button
+            type="button"
+            onClick={() => setTab("profil")}
+            style={{
+              flex: 1,
+              padding: "14px 0",
+              background: "transparent",
+              border: "none",
+              borderBottom: tab === "profil" ? "2px solid var(--accent)" : "2px solid transparent",
+              color: tab === "profil" ? "var(--accent)" : "var(--muted)",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Edit Profil
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("password")}
+            style={{
+              flex: 1,
+              padding: "14px 0",
+              background: "transparent",
+              border: "none",
+              borderBottom: tab === "password" ? "2px solid var(--accent)" : "2px solid transparent",
+              color: tab === "password" ? "var(--accent)" : "var(--muted)",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Ganti Password
+          </button>
+        </div>
+
+        <div style={{ padding: 20 }}>
+          {tab === "profil" && (
+            <form onSubmit={saveProfile}>
+              <div className="field">
+                <label>Username</label>
+                <input
+                  required
+                  minLength={3}
+                  value={username}
+                  onChange={(e) =>
+                    setUsername(
+                      e.target.value.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "")
+                    )
+                  }
+                />
+                <p className="muted" style={{ marginTop: 4 }}>
+                  Huruf kecil, angka, underscore — tanpa spasi.
+                </p>
+              </div>
+              <div className="field">
+                <label>Email</label>
+                <input value={data.user.email} disabled />
+                <p className="muted" style={{ marginTop: 4 }}>Email tidak bisa diubah.</p>
+              </div>
+              <button disabled={savingProfile}>
+                {savingProfile ? "Menyimpan..." : "Simpan profil"}
+              </button>
+            </form>
+          )}
+
+          {tab === "password" && (
+            <form onSubmit={savePassword}>
+              <div className="field">
+                <label>Password saat ini</label>
+                <input
+                  type="password"
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label>Password baru</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimal 6 karakter"
+                />
+              </div>
+              <div className="field">
+                <label>Konfirmasi password baru</label>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+              <button disabled={savingPassword}>
+                {savingPassword ? "Menyimpan..." : "Ganti password"}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+              }
+                    

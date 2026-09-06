@@ -80,8 +80,9 @@ function MenuIcon({ href, emoji, label }) {
   );
 }
 
-const HISTORY_TABS = [
-  { key: "tugas", label: "Tugas" },
+const ACTIVITY_TABS = [
+  { key: "peringkat", label: "Peringkat" },
+  { key: "tugas", label: "Riwayat Tugas" },
   { key: "terkunci", label: "Terkunci" },
   { key: "tarik", label: "Tarik" },
   { key: "deposit", label: "Deposit" },
@@ -95,7 +96,7 @@ export default function DashboardPage() {
   const [announcement, setAnnouncement] = useState(null);
   const [checkinBusy, setCheckinBusy] = useState(false);
   const [leaderboard, setLeaderboard] = useState(null);
-  const [historyTab, setHistoryTab] = useState("tugas");
+  const [activityTab, setActivityTab] = useState("peringkat");
   const [showAllTasks, setShowAllTasks] = useState(false);
 
   async function load() {
@@ -227,49 +228,11 @@ export default function DashboardPage() {
         </a>
       </div>
 
-      {/* === MENU CEPAT: Deposit, Kunci Saldo, Chat Admin (dipadatkan jadi 1 baris ikon) === */}
-      <div className="card" style={{ display: "flex", padding: "8px 4px" }}>
+      {/* === MENU CEPAT: baris ikon polos, tanpa bungkus card, biar nggak numpuk kotak === */}
+      <div style={{ display: "flex", margin: "4px 0 20px" }}>
         <MenuIcon href="/dashboard/deposit" emoji="💰" label="Deposit" />
         <MenuIcon href="/dashboard/kunci-saldo" emoji="🔒" label="Kunci Saldo" />
         <MenuIcon href="/dashboard/chat" emoji="💬" label="Chat Admin" />
-      </div>
-
-      <div className="card">
-        <h2>Ajak teman</h2>
-        <p className="muted" style={{ marginBottom: 12 }}>
-          Dapat <b style={{ color: "var(--accent)" }}>Rp800</b> setiap teman yang Anda ajak berhasil menyelesaikan tugas pertamanya.
-        </p>
-        <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
-          <div>
-            <div className="balance-label" style={{ fontSize: "0.7rem" }}>Diajak</div>
-            <div style={{ fontSize: "1.3rem", fontWeight: 700 }}>{data.referral?.count ?? 0}</div>
-          </div>
-          <div>
-            <div className="balance-label" style={{ fontSize: "0.7rem" }}>Bonus didapat</div>
-            <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--accent)" }}>
-              {formatRupiah(data.referral?.earned ?? 0)}
-            </div>
-          </div>
-        </div>
-        <button className="secondary" onClick={copyReferralLink}>
-          {copied ? "Tersalin!" : "Salin link ajakan"}
-        </button>
-
-        <h2 style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
-          Leaderboard Bulan Ini
-        </h2>
-        {leaderboard === null && <p className="muted">Memuat...</p>}
-        {leaderboard && leaderboard.length === 0 && <p className="muted">Belum ada data bulan ini.</p>}
-        {leaderboard && leaderboard.map((r, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span className="muted">#{i + 1}</span>
-              <Avatar url={r.photo_url} name={r.username} size={28} />
-              {r.username}
-            </div>
-            <b style={{ color: "var(--accent)" }}>{formatRupiah(r.total)}</b>
-          </div>
-        ))}
       </div>
 
       <div className="card">
@@ -303,25 +266,48 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* === RIWAYAT & SALDO TERKUNCI: digabung jadi 1 card pakai tab, biar nggak makan tempat === */}
+      <div className="card">
+        <h2>Ajak teman</h2>
+        <p className="muted" style={{ marginBottom: 12 }}>
+          Dapat <b style={{ color: "var(--accent)" }}>Rp800</b> setiap teman yang Anda ajak berhasil menyelesaikan tugas pertamanya.
+        </p>
+        <div style={{ display: "flex", gap: 16, marginBottom: 12 }}>
+          <div>
+            <div className="balance-label" style={{ fontSize: "0.7rem" }}>Diajak</div>
+            <div style={{ fontSize: "1.3rem", fontWeight: 700 }}>{data.referral?.count ?? 0}</div>
+          </div>
+          <div>
+            <div className="balance-label" style={{ fontSize: "0.7rem" }}>Bonus didapat</div>
+            <div style={{ fontSize: "1.3rem", fontWeight: 700, color: "var(--accent)" }}>
+              {formatRupiah(data.referral?.earned ?? 0)}
+            </div>
+          </div>
+        </div>
+        <button className="secondary" onClick={copyReferralLink}>
+          {copied ? "Tersalin!" : "Salin link ajakan"}
+        </button>
+      </div>
+
+      {/* === AKTIVITAS: Peringkat + semua riwayat digabung 1 panel bertab, ala buku tabungan === */}
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <div style={{ display: "flex", borderBottom: "1px solid var(--border)", overflowX: "auto" }}>
-          {HISTORY_TABS.map((t) => (
+          {ACTIVITY_TABS.map((t) => (
             <button
               key={t.key}
               type="button"
-              onClick={() => setHistoryTab(t.key)}
+              onClick={() => setActivityTab(t.key)}
               style={{
                 flex: 1,
-                minWidth: 80,
+                minWidth: 88,
                 padding: "12px 0",
                 background: "transparent",
                 border: "none",
-                borderBottom: historyTab === t.key ? "2px solid var(--accent)" : "2px solid transparent",
-                color: historyTab === t.key ? "var(--accent)" : "var(--muted)",
+                borderBottom: activityTab === t.key ? "2px solid var(--accent)" : "2px solid transparent",
+                color: activityTab === t.key ? "var(--accent)" : "var(--muted)",
                 fontWeight: 700,
-                fontSize: "0.85rem",
+                fontSize: "0.82rem",
                 cursor: "pointer",
+                whiteSpace: "nowrap",
               }}
             >
               {t.label}
@@ -330,7 +316,24 @@ export default function DashboardPage() {
         </div>
 
         <div style={{ padding: 20 }}>
-          {historyTab === "tugas" && (
+          {activityTab === "peringkat" && (
+            <>
+              {leaderboard === null && <p className="muted">Memuat...</p>}
+              {leaderboard && leaderboard.length === 0 && <p className="muted">Belum ada data bulan ini.</p>}
+              {leaderboard && leaderboard.map((r, i) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span className="muted">#{i + 1}</span>
+                    <Avatar url={r.photo_url} name={r.username} size={28} />
+                    {r.username}
+                  </div>
+                  <b style={{ color: "var(--accent)" }}>{formatRupiah(r.total)}</b>
+                </div>
+              ))}
+            </>
+          )}
+
+          {activityTab === "tugas" && (
             <>
               {data.submissions.length === 0 && <p className="muted">Belum ada riwayat.</p>}
               {data.submissions.map((s) => (
@@ -352,7 +355,7 @@ export default function DashboardPage() {
             </>
           )}
 
-          {historyTab === "terkunci" && (
+          {activityTab === "terkunci" && (
             <>
               {(!data.locks || data.locks.length === 0) && <p className="muted">Belum ada saldo yang dikunci.</p>}
               {data.locks && data.locks.map((l) => {
@@ -372,7 +375,7 @@ export default function DashboardPage() {
             </>
           )}
 
-          {historyTab === "tarik" && (
+          {activityTab === "tarik" && (
             <>
               {data.withdrawals.length === 0 && <p className="muted">Belum ada riwayat.</p>}
               {data.withdrawals.map((w) => (
@@ -389,7 +392,7 @@ export default function DashboardPage() {
             </>
           )}
 
-          {historyTab === "deposit" && (
+          {activityTab === "deposit" && (
             <>
               {(!data.deposits || data.deposits.length === 0) && <p className="muted">Belum ada riwayat deposit.</p>}
               {data.deposits && data.deposits.map((d) => (
@@ -407,25 +410,6 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
-
-      <style jsx>{`
-        .balance-card {
-          background: var(--card-bg);
-          border-radius: 16px;
-          padding: 20px;
-          margin-bottom: 16px;
-          border: 1px solid var(--border);
-        }
-        .balance-label {
-          font-size: 0.85rem;
-          color: var(--muted);
-        }
-        .balance-value {
-          font-size: 1.6rem;
-          font-weight: 700;
-        }
-      `}</style>
     </div>
   );
-          }
-          
+}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import AdminNav from "./AdminNav";
+import EnableNotificationsButton from "@/components/EnableNotificationsButton";
 
 function formatRupiah(n) {
   return "Rp" + Number(n).toLocaleString("id-ID");
@@ -149,6 +150,10 @@ export default function AdminUsersPage() {
       {notice && <div className="success">{notice}</div>}
 
       <div className="card">
+        <EnableNotificationsButton />
+      </div>
+
+      <div className="card">
         <h2>Teks berjalan (running text)</h2>
         <p className="muted" style={{ marginBottom: 12 }}>
           Muncul di paling atas dashboard pengguna kalau dinyalakan.
@@ -251,4 +256,4 @@ export default function AdminUsersPage() {
       </div>
     </div>
   );
-                        }
+}

@@ -125,7 +125,7 @@ export default function AdminChatPage() {
     loadThread(selected.user_id, false);
     const interval = setInterval(() => loadThread(selected.user_id, true), 5000);
     return () => clearInterval(interval);
-  }, [selected]);
+  }, [selected?.user.id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });

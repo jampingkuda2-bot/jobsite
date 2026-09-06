@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
+import { sendPushToUser } from "@/lib/push";
 
 export async function GET() {
   try {
@@ -90,11 +91,31 @@ export async function POST(req) {
         );
       }
       await query("COMMIT");
-      return Response.json({ ok: true });
     } catch (err) {
       await query("ROLLBACK");
       throw err;
     }
+
+    // Kirim push notification ke user (diabaikan kalau gagal)
+    try {
+      if (action === "approve") {
+        await sendPushToUser(dep.user_id, {
+          title: "Deposit disetujui ✅",
+          body: `Deposit Rp${Number(dep.amount).toLocaleString("id-ID")} sudah masuk ke saldo kamu.`,
+          url: "/dashboard",
+        });
+      } else {
+        await sendPushToUser(dep.user_id, {
+          title: "Deposit ditolak",
+          body: `Deposit Rp${Number(dep.amount).toLocaleString("id-ID")} ditolak admin.`,
+          url: "/dashboard/deposit",
+        });
+      }
+    } catch (pushErr) {
+      console.error("Gagal kirim push ke user:", pushErr.message);
+    }
+
+    return Response.json({ ok: true });
   } catch (e) {
     console.error("Error di POST /api/admin/deposits:", e);
     return Response.json({ error: "Gagal memproses" }, { status: 500 });

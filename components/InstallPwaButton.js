@@ -1,46 +1,42 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getInstallState, subscribeInstallState, triggerInstall } from "@/lib/pwaInstall";
 
 export default function InstallPwaButton() {
-  const [promptEvent, setPromptEvent] = useState(null);
-  const [installed, setInstalled] = useState(false);
+  const [state, setState] = useState({ deferredPrompt: null, installed: false, unsupportedPlatform: false });
+  const [showIosHelp, setShowIosHelp] = useState(false);
 
   useEffect(() => {
-    function onBeforeInstall(e) {
-      e.preventDefault();
-      setPromptEvent(e);
-    }
-    function onInstalled() {
-      setInstalled(true);
-      setPromptEvent(null);
-    }
-
-    window.addEventListener("beforeinstallprompt", onBeforeInstall);
-    window.addEventListener("appinstalled", onInstalled);
-
-    if (window.matchMedia("(display-mode: standalone)").matches) {
-      setInstalled(true);
-    }
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", onBeforeInstall);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
+    setState(getInstallState());
+    const unsubscribe = subscribeInstallState(() => setState(getInstallState()));
+    return unsubscribe;
   }, []);
 
   async function handleInstall() {
-    if (!promptEvent) return;
-    promptEvent.prompt();
-    await promptEvent.userChoice;
-    setPromptEvent(null);
+    if (state.unsupportedPlatform) {
+      setShowIosHelp(true);
+      return;
+    }
+    await triggerInstall();
   }
 
-  if (installed || !promptEvent) return null;
+  if (state.installed) return null;
+  // Kalau browser-nya nggak dukung beforeinstallprompt sama sekali (bukan iOS Safari
+  // dan bukan Chrome-based), diamkan saja daripada kasih instruksi yang salah.
+  if (!state.deferredPrompt && !state.unsupportedPlatform) return null;
 
   return (
-    <button type="button" className="secondary" onClick={handleInstall}>
-      📲 Install aplikasi
-    </button>
+    <div>
+      <button type="button" className="secondary" onClick={handleInstall}>
+        📲 Install aplikasi
+      </button>
+      {showIosHelp && (
+        <p className="muted" style={{ fontSize: "0.8rem", marginTop: 6, maxWidth: 260 }}>
+          Di Safari: tap ikon <b>Bagikan</b> (kotak dengan panah ke atas), lalu pilih{" "}
+          <b>"Tambah ke Layar Utama"</b>.
+        </p>
+      )}
+    </div>
   );
 }

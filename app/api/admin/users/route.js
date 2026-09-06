@@ -10,7 +10,7 @@ export async function GET(req) {
     const q = searchParams.get("q") || "";
 
     const res = await query(
-      `select id, email, username, saldo, is_verified, created_at
+      `select id, email, username, saldo, is_verified, created_at, photo_url
        from users
        where username ilike $1 or email ilike $1
        order by created_at desc

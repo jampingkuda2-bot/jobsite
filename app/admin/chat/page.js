@@ -30,6 +30,44 @@ function presenceLabel(lastActiveAt) {
   return { text: `Terakhir online ${days} hari lalu`, online: false };
 }
 
+function Avatar({ url, name, size = 32 }) {
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={name || "avatar"}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          objectFit: "cover",
+          border: "1px solid var(--border)",
+        }}
+      />
+    );
+  }
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: "var(--panel-2)",
+        border: "1px solid var(--border)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: size * 0.45,
+        fontWeight: 700,
+        color: "var(--muted)",
+        flexShrink: 0,
+      }}
+    >
+      {name?.[0]?.toUpperCase() || "?"}
+    </div>
+  );
+}
+
 function Attachment({ url, type }) {
   if (type === "image") {
     return <img src={url} alt="lampiran" style={{ maxWidth: "100%", borderRadius: 10, display: "block", marginTop: 6 }} />;
@@ -207,23 +245,26 @@ export default function AdminChatPage() {
               key={c.user_id}
               className="task-item"
               onClick={() => setSelected(c)}
-              style={{ cursor: "pointer" }}
+              style={{ cursor: "pointer", display: "flex", gap: 10, alignItems: "flex-start" }}
             >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div className="title">
-                  {presence.online && <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", marginRight: 6 }} />}
-                  {c.username}
+              <Avatar url={c.photo_url} name={c.username} size={36} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div className="title">
+                    {presence.online && <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", marginRight: 6 }} />}
+                    {c.username}
+                  </div>
+                  {c.unread_count > 0 && (
+                    <span className="badge pending">{c.unread_count} baru</span>
+                  )}
                 </div>
-                {c.unread_count > 0 && (
-                  <span className="badge pending">{c.unread_count} baru</span>
-                )}
+                <p className="muted" style={{ margin: "4px 0" }}>
+                  {c.last_sender === "admin" ? "Anda: " : c.last_sender === "ai" ? "🤖 AI: " : ""}{c.last_message || "(lampiran)"}
+                </p>
+                <p className="muted" style={{ fontSize: "0.75rem" }}>
+                  {formatWaktu(c.last_at)} · <span style={{ color: presence.online ? "var(--accent)" : undefined }}>{presence.text}</span>
+                </p>
               </div>
-              <p className="muted" style={{ margin: "4px 0" }}>
-                {c.last_sender === "admin" ? "Anda: " : c.last_sender === "ai" ? "🤖 AI: " : ""}{c.last_message || "(lampiran)"}
-              </p>
-              <p className="muted" style={{ fontSize: "0.75rem" }}>
-                {formatWaktu(c.last_at)} · <span style={{ color: presence.online ? "var(--accent)" : undefined }}>{presence.text}</span>
-              </p>
             </div>
             );
           })}
@@ -231,11 +272,14 @@ export default function AdminChatPage() {
       ) : (
         <div className="card" style={{ display: "flex", flexDirection: "column", minHeight: "60vh" }}>
           <div className="top-bar" style={{ marginBottom: 12 }}>
-            <div>
-              <h2 style={{ marginBottom: 2 }}>{selected.username}</h2>
-              <span className="muted" style={{ color: presenceLabel(selected.last_active_at).online ? "var(--accent)" : undefined }}>
-                {presenceLabel(selected.last_active_at).text}
-              </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Avatar url={selected.photo_url} name={selected.username} size={40} />
+              <div>
+                <h2 style={{ marginBottom: 2 }}>{selected.username}</h2>
+                <span className="muted" style={{ color: presenceLabel(selected.last_active_at).online ? "var(--accent)" : undefined }}>
+                  {presenceLabel(selected.last_active_at).text}
+                </span>
+              </div>
             </div>
             <button className="link-btn" onClick={() => setSelected(null)}>‹ Semua chat</button>
           </div>

@@ -1,6 +1,7 @@
 import { query } from "@/lib/db";
 import { getUserSession } from "@/lib/auth";
 import { generateAiReply } from "@/lib/ai";
+import { sendPushToAdmin, sendPushToUser } from "@/lib/push";
 
 export async function GET() {
   try {
@@ -61,6 +62,17 @@ export async function POST(req) {
       session.userId,
     ]);
 
+    // Kirim push notification ke admin (diabaikan kalau gagal)
+    try {
+      await sendPushToAdmin({
+        title: "Pesan baru dari user",
+        body: text || "Mengirim lampiran",
+        url: "/admin/chat",
+      });
+    } catch (pushErr) {
+      console.error("Gagal kirim push ke admin:", pushErr.message);
+    }
+
     // ================= TAMBAHAN: Balasan otomatis AI (kalau diaktifkan admin) =================
     try {
       const aiSettings = await query("select enabled from ai_chat_settings where id = 1");
@@ -75,6 +87,17 @@ export async function POST(req) {
           "insert into chat_messages (user_id, sender, message) values ($1, 'ai', $2)",
           [session.userId, reply.slice(0, 2000)]
         );
+
+        // Kirim push notification ke user pas AI balas (diabaikan kalau gagal)
+        try {
+          await sendPushToUser(session.userId, {
+            title: "AI membalas chat kamu",
+            body: reply,
+            url: "/dashboard/chat",
+          });
+        } catch (pushErr) {
+          console.error("Gagal kirim push ke user:", pushErr.message);
+        }
       }
     } catch (aiErr) {
       console.error("Gagal generate balasan AI (diabaikan, pesan user tetap terkirim):", aiErr.message);

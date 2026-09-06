@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import EnableNotificationsButton from "@/components/EnableNotificationsButton";
+import InstallPwaButton from "@/components/InstallPwaButton";
 
 function formatRupiah(n) {
   return "Rp" + Number(n).toLocaleString("id-ID");
@@ -141,6 +143,11 @@ export default function DashboardPage() {
           </div>
         </div>
         <button className="link-btn" onClick={logout}>Keluar</button>
+      </div>
+
+      <div className="card" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <EnableNotificationsButton />
+        <InstallPwaButton />
       </div>
 
       <div className="card">
@@ -361,4 +368,5 @@ export default function DashboardPage() {
       `}</style>
     </div>
   );
-}
+    }
+            

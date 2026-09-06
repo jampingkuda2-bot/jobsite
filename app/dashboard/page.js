@@ -46,6 +46,47 @@ function Avatar({ url, name, size = 32 }) {
   );
 }
 
+function MenuIcon({ href, emoji, label }) {
+  return (
+    <a
+      href={href}
+      style={{
+        textDecoration: "none",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 6,
+        flex: 1,
+        padding: "12px 4px",
+      }}
+    >
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 12,
+          background: "var(--panel-2)",
+          border: "1px solid var(--border)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "1.3rem",
+        }}
+      >
+        {emoji}
+      </div>
+      <span style={{ fontSize: "0.75rem", color: "var(--text)", textAlign: "center" }}>{label}</span>
+    </a>
+  );
+}
+
+const HISTORY_TABS = [
+  { key: "tugas", label: "Tugas" },
+  { key: "terkunci", label: "Terkunci" },
+  { key: "tarik", label: "Tarik" },
+  { key: "deposit", label: "Deposit" },
+];
+
 export default function DashboardPage() {
   const router = useRouter();
   const [data, setData] = useState(null);
@@ -54,6 +95,7 @@ export default function DashboardPage() {
   const [announcement, setAnnouncement] = useState(null);
   const [checkinBusy, setCheckinBusy] = useState(false);
   const [leaderboard, setLeaderboard] = useState(null);
+  const [historyTab, setHistoryTab] = useState("tugas");
 
   async function load() {
     try {
@@ -184,30 +226,12 @@ export default function DashboardPage() {
         </a>
       </div>
 
-      {/* === MENU DEPOSIT === */}
-      <a href="/dashboard/deposit" className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none" }}>
-        <div>
-          <h2 style={{ marginBottom: 2 }}>Deposit</h2>
-          <span className="muted">Top-up saldo via QRIS/transfer</span>
-        </div>
-        <span style={{ color: "var(--accent)", fontWeight: 700 }}>›</span>
-      </a>
-
-      <a href="/dashboard/kunci-saldo" className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none" }}>
-        <div>
-          <h2 style={{ marginBottom: 2 }}>Kunci Saldo</h2>
-          <span className="muted">Kunci 30/90/365 hari, dapat bonus & badge</span>
-        </div>
-        <span style={{ color: "var(--accent)", fontWeight: 700 }}>›</span>
-      </a>
-
-      <a href="/dashboard/chat" className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none" }}>
-        <div>
-          <h2 style={{ marginBottom: 2 }}>Chat Admin</h2>
-          <span className="muted">Tanya soal ketersediaan tugas</span>
-        </div>
-        <span style={{ color: "var(--accent)", fontWeight: 700 }}>›</span>
-      </a>
+      {/* === MENU CEPAT: Deposit, Kunci Saldo, Chat Admin (dipadatkan jadi 1 baris ikon) === */}
+      <div className="card" style={{ display: "flex", padding: "8px 4px" }}>
+        <MenuIcon href="/dashboard/deposit" emoji="💰" label="Deposit" />
+        <MenuIcon href="/dashboard/kunci-saldo" emoji="🔒" label="Kunci Saldo" />
+        <MenuIcon href="/dashboard/chat" emoji="💬" label="Chat Admin" />
+      </div>
 
       <div className="card">
         <h2>Ajak teman</h2>
@@ -268,77 +292,109 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="card">
-        <h2>Riwayat tugas</h2>
-        {data.submissions.length === 0 && <p className="muted">Belum ada riwayat.</p>}
-        {data.submissions.map((s) => (
-          <div key={s.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <div>
-                <div>{s.title}</div>
-                <span className="muted">{formatRupiah(s.reward)}</span>
-              </div>
-              <span className={`badge ${s.status}`}>
-                {s.status === "pending" ? "Menunggu" : s.status === "approved" ? "Disetujui" : "Ditolak"}
-              </span>
-            </div>
-            {s.status === "rejected" && s.rejection_reason && (
-              <p className="muted" style={{ marginTop: 4 }}>Alasan: {s.rejection_reason}</p>
-            )}
-          </div>
-        ))}
-      </div>
+      {/* === RIWAYAT & SALDO TERKUNCI: digabung jadi 1 card pakai tab, biar nggak makan tempat === */}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", overflowX: "auto" }}>
+          {HISTORY_TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setHistoryTab(t.key)}
+              style={{
+                flex: 1,
+                minWidth: 80,
+                padding: "12px 0",
+                background: "transparent",
+                border: "none",
+                borderBottom: historyTab === t.key ? "2px solid var(--accent)" : "2px solid transparent",
+                color: historyTab === t.key ? "var(--accent)" : "var(--muted)",
+                fontWeight: 700,
+                fontSize: "0.85rem",
+                cursor: "pointer",
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
 
-      <div className="card">
-        <h2>Saldo terkunci</h2>
-        {(!data.locks || data.locks.length === 0) && <p className="muted">Belum ada saldo yang dikunci.</p>}
-        {data.locks && data.locks.map((l) => {
-          const badge = l.duration_days === 30 ? "Perak" : l.duration_days === 90 ? "Emas" : "Platinum";
-          return (
-            <div key={l.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
-              <div>
-                <div>{formatRupiah(l.amount)} · {l.duration_days} hari</div>
-                <span className="muted">Badge: {badge} · Bonus {formatRupiah(l.bonus_amount)}</span>
-              </div>
-              <span className={`badge ${l.status === "completed" ? "done" : "pending"}`}>
-                {l.status === "completed" ? "Sudah cair" : "Terkunci"}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+        <div style={{ padding: 20 }}>
+          {historyTab === "tugas" && (
+            <>
+              {data.submissions.length === 0 && <p className="muted">Belum ada riwayat.</p>}
+              {data.submissions.map((s) => (
+                <div key={s.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <div>
+                      <div>{s.title}</div>
+                      <span className="muted">{formatRupiah(s.reward)}</span>
+                    </div>
+                    <span className={`badge ${s.status}`}>
+                      {s.status === "pending" ? "Menunggu" : s.status === "approved" ? "Disetujui" : "Ditolak"}
+                    </span>
+                  </div>
+                  {s.status === "rejected" && s.rejection_reason && (
+                    <p className="muted" style={{ marginTop: 4 }}>Alasan: {s.rejection_reason}</p>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
 
-      <div className="card">
-        <h2>Riwayat penarikan</h2>
-        {data.withdrawals.length === 0 && <p className="muted">Belum ada riwayat.</p>}
-        {data.withdrawals.map((w) => (
-          <div key={w.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
-            <div>
-              <div>{formatRupiah(w.amount)}</div>
-              <span className="muted">{w.ref_code ? `${w.ref_code} · ` : ""}ke {w.dana_number}</span>
-            </div>
-            <span className={`badge ${w.status === "done" ? "done" : w.status === "rejected" ? "rejected" : "pending"}`}>
-              {w.status === "done" ? "Selesai" : w.status === "rejected" ? "Ditolak" : "Diproses"}
-            </span>
-          </div>
-        ))}
-      </div>
+          {historyTab === "terkunci" && (
+            <>
+              {(!data.locks || data.locks.length === 0) && <p className="muted">Belum ada saldo yang dikunci.</p>}
+              {data.locks && data.locks.map((l) => {
+                const badge = l.duration_days === 30 ? "Perak" : l.duration_days === 90 ? "Emas" : "Platinum";
+                return (
+                  <div key={l.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+                    <div>
+                      <div>{formatRupiah(l.amount)} · {l.duration_days} hari</div>
+                      <span className="muted">Badge: {badge} · Bonus {formatRupiah(l.bonus_amount)}</span>
+                    </div>
+                    <span className={`badge ${l.status === "completed" ? "done" : "pending"}`}>
+                      {l.status === "completed" ? "Sudah cair" : "Terkunci"}
+                    </span>
+                  </div>
+                );
+              })}
+            </>
+          )}
 
-      {/* === TAMBAHAN: Riwayat deposit === */}
-      <div className="card">
-        <h2>Riwayat deposit</h2>
-        {(!data.deposits || data.deposits.length === 0) && <p className="muted">Belum ada riwayat deposit.</p>}
-        {data.deposits && data.deposits.map((d) => (
-          <div key={d.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
-            <div>
-              <div>{formatRupiah(d.amount)}</div>
-              <span className="muted">{d.payment_method} · {new Date(d.requested_at).toLocaleDateString("id-ID")}</span>
-            </div>
-            <span className={`badge ${d.status}`}>
-              {d.status === "pending" ? "Menunggu" : d.status === "approved" ? "Disetujui" : "Ditolak"}
-            </span>
-          </div>
-        ))}
+          {historyTab === "tarik" && (
+            <>
+              {data.withdrawals.length === 0 && <p className="muted">Belum ada riwayat.</p>}
+              {data.withdrawals.map((w) => (
+                <div key={w.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+                  <div>
+                    <div>{formatRupiah(w.amount)}</div>
+                    <span className="muted">{w.ref_code ? `${w.ref_code} · ` : ""}ke {w.dana_number}</span>
+                  </div>
+                  <span className={`badge ${w.status === "done" ? "done" : w.status === "rejected" ? "rejected" : "pending"}`}>
+                    {w.status === "done" ? "Selesai" : w.status === "rejected" ? "Ditolak" : "Diproses"}
+                  </span>
+                </div>
+              ))}
+            </>
+          )}
+
+          {historyTab === "deposit" && (
+            <>
+              {(!data.deposits || data.deposits.length === 0) && <p className="muted">Belum ada riwayat deposit.</p>}
+              {data.deposits && data.deposits.map((d) => (
+                <div key={d.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+                  <div>
+                    <div>{formatRupiah(d.amount)}</div>
+                    <span className="muted">{d.payment_method} · {new Date(d.requested_at).toLocaleDateString("id-ID")}</span>
+                  </div>
+                  <span className={`badge ${d.status}`}>
+                    {d.status === "pending" ? "Menunggu" : d.status === "approved" ? "Disetujui" : "Ditolak"}
+                  </span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
       </div>
 
       <style jsx>{`

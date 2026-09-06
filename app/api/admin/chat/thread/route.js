@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
+import { sendPushToUser } from "@/lib/push";
 
 async function markAdminActive() {
   await query(
@@ -66,6 +67,17 @@ export async function POST(req) {
       "insert into chat_messages (user_id, sender, message, attachment_url, attachment_type) values ($1, 'admin', $2, $3, $4)",
       [userId, text.slice(0, 2000), attachmentUrl || null, attachmentType || null]
     );
+
+    // Kirim push notification ke user (diabaikan kalau gagal, biar pesan tetap terkirim)
+    try {
+      await sendPushToUser(userId, {
+        title: "Admin membalas chat kamu",
+        body: text || "Mengirim lampiran",
+        url: "/dashboard/chat",
+      });
+    } catch (pushErr) {
+      console.error("Gagal kirim push ke user:", pushErr.message);
+    }
 
     return Response.json({ ok: true });
   } catch (e) {

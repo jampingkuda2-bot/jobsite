@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { getUserSession } from "@/lib/auth";
+import { sendPushToAdmin } from "@/lib/push";
 
 export async function POST(req) {
   try {
@@ -28,6 +29,17 @@ export async function POST(req) {
        RETURNING id`,
       [session.userId, amt, paymentMethod, proofUrl]
     );
+
+    // Kirim push notification ke admin (diabaikan kalau gagal)
+    try {
+      await sendPushToAdmin({
+        title: "Ada pengajuan deposit baru",
+        body: `Jumlah Rp${amt.toLocaleString("id-ID")} via ${paymentMethod}, menunggu verifikasi.`,
+        url: "/admin/deposit",
+      });
+    } catch (pushErr) {
+      console.error("Gagal kirim push ke admin:", pushErr.message);
+    }
 
     return Response.json({
       ok: true,

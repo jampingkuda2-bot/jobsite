@@ -209,14 +209,6 @@ export default function DashboardPage() {
         <span style={{ color: "var(--accent)", fontWeight: 700 }}>›</span>
       </a>
 
-      <a href="/dashboard/profile" className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none" }}>
-        <div>
-          <h2 style={{ marginBottom: 2 }}>Profil Saya</h2>
-          <span className="muted">Ganti foto, username & password</span>
-        </div>
-        <span style={{ color: "var(--accent)", fontWeight: 700 }}>›</span>
-      </a>
-
       <div className="card">
         <h2>Ajak teman</h2>
         <p className="muted" style={{ marginBottom: 12 }}>
@@ -368,5 +360,4 @@ export default function DashboardPage() {
       `}</style>
     </div>
   );
-    }
-            
+}

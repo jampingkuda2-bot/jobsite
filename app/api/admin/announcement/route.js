@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
+import { sendPushToAllUsers } from "@/lib/push";
 
 export async function GET() {
   try {
@@ -32,6 +33,19 @@ export async function POST(req) {
        on conflict (id) do update set message = $1, is_active = $2, updated_at = now()`,
       [message || "", !!isActive]
     );
+
+    // Kirim push notification ke semua user, cuma kalau pengumumannya diaktifkan
+    if (isActive && message) {
+      try {
+        await sendPushToAllUsers({
+          title: "Pengumuman baru 📢",
+          body: message,
+          url: "/dashboard",
+        });
+      } catch (pushErr) {
+        console.error("Gagal kirim push ke semua user:", pushErr.message);
+      }
+    }
 
     return Response.json({ ok: true });
   } catch (e) {

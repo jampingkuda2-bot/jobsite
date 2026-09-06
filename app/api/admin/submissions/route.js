@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
+import { sendPushToUser } from "@/lib/push";
 
 export async function GET() {
   try {
@@ -49,7 +50,7 @@ export async function POST(req) {
     }
 
     const subRes = await query(
-      `select s.id, s.user_id, s.status, t.reward
+      `select s.id, s.user_id, s.status, t.reward, t.title
        from task_submissions s join tasks t on t.id = s.task_id
        where s.id = $1`,
       [submissionId]
@@ -111,11 +112,31 @@ export async function POST(req) {
       }
 
       await query("COMMIT");
-      return Response.json({ ok: true });
     } catch (err) {
       await query("ROLLBACK");
       throw err; // lempar ke catch luar
     }
+
+    // Kirim push notification ke user (diabaikan kalau gagal)
+    try {
+      if (action === "approve") {
+        await sendPushToUser(sub.user_id, {
+          title: "Tugas kamu disetujui! 🎉",
+          body: `"${sub.title}" disetujui, saldo bertambah.`,
+          url: "/dashboard",
+        });
+      } else {
+        await sendPushToUser(sub.user_id, {
+          title: "Tugas kamu ditolak",
+          body: rejectionReason ? `"${sub.title}": ${rejectionReason}` : `"${sub.title}" ditolak admin.`,
+          url: "/dashboard",
+        });
+      }
+    } catch (pushErr) {
+      console.error("Gagal kirim push ke user:", pushErr.message);
+    }
+
+    return Response.json({ ok: true });
   } catch (e) {
     console.error("Error di POST /api/admin/submissions:", e);
     return Response.json(

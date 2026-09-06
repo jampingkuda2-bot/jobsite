@@ -8,6 +8,43 @@ function formatRupiah(n) {
   return "Rp" + Number(n).toLocaleString("id-ID");
 }
 
+function Avatar({ url, name, size = 32 }) {
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={name || "avatar"}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          objectFit: "cover",
+          border: "1px solid var(--border)",
+        }}
+      />
+    );
+  }
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: "var(--panel-2)",
+        border: "1px solid var(--border)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: size * 0.45,
+        fontWeight: 700,
+        color: "var(--muted)",
+      }}
+    >
+      {name?.[0]?.toUpperCase() || "?"}
+    </div>
+  );
+}
+
 export default function AdminUsersPage() {
   const router = useRouter();
   const [users, setUsers] = useState(null);
@@ -186,6 +223,7 @@ export default function AdminUsersPage() {
           <table>
             <thead>
               <tr>
+                <th></th>
                 <th>Username</th>
                 <th>Email</th>
                 <th>Saldo</th>
@@ -195,6 +233,7 @@ export default function AdminUsersPage() {
             <tbody>
               {users.map((u) => (
                 <tr key={u.id}>
+                  <td><Avatar url={u.photo_url} name={u.username} /></td>
                   <td>{u.username || <span className="muted">(belum lengkap)</span>}</td>
                   <td>{u.email}</td>
                   <td>{formatRupiah(u.saldo)}</td>
@@ -212,4 +251,4 @@ export default function AdminUsersPage() {
       </div>
     </div>
   );
-}
+                        }

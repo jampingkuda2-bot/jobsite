@@ -7,6 +7,43 @@ function formatRupiah(n) {
   return "Rp" + Number(n).toLocaleString("id-ID");
 }
 
+function Avatar({ url, name, size = 32 }) {
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt={name || "avatar"}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          objectFit: "cover",
+          border: "1px solid var(--border)",
+        }}
+      />
+    );
+  }
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        background: "var(--panel-2)",
+        border: "1px solid var(--border)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: size * 0.45,
+        fontWeight: 700,
+        color: "var(--muted)",
+      }}
+    >
+      {name?.[0]?.toUpperCase() || "?"}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [data, setData] = useState(null);
@@ -94,9 +131,14 @@ export default function DashboardPage() {
       )}
 
       <div className="top-bar">
-        <div>
-          <h1>Halo, {data.user.username}</h1>
-          <span className="muted">{data.user.email}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <a href="/dashboard/profile" style={{ display: "block" }}>
+            <Avatar url={data.user.photo_url} name={data.user.username} size={44} />
+          </a>
+          <div>
+            <h1>Halo, {data.user.username}</h1>
+            <span className="muted">{data.user.email}</span>
+          </div>
         </div>
         <button className="link-btn" onClick={logout}>Keluar</button>
       </div>
@@ -160,6 +202,14 @@ export default function DashboardPage() {
         <span style={{ color: "var(--accent)", fontWeight: 700 }}>›</span>
       </a>
 
+      <a href="/dashboard/profile" className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none" }}>
+        <div>
+          <h2 style={{ marginBottom: 2 }}>Profil Saya</h2>
+          <span className="muted">Ganti foto, username & password</span>
+        </div>
+        <span style={{ color: "var(--accent)", fontWeight: 700 }}>›</span>
+      </a>
+
       <div className="card">
         <h2>Ajak teman</h2>
         <p className="muted" style={{ marginBottom: 12 }}>
@@ -187,9 +237,10 @@ export default function DashboardPage() {
         {leaderboard === null && <p className="muted">Memuat...</p>}
         {leaderboard && leaderboard.length === 0 && <p className="muted">Belum ada data bulan ini.</p>}
         {leaderboard && leaderboard.map((r, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
-            <div>
-              <span className="muted" style={{ marginRight: 8 }}>#{i + 1}</span>
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span className="muted">#{i + 1}</span>
+              <Avatar url={r.photo_url} name={r.username} size={28} />
               {r.username}
             </div>
             <b style={{ color: "var(--accent)" }}>{formatRupiah(r.total)}</b>
@@ -310,5 +361,4 @@ export default function DashboardPage() {
       `}</style>
     </div>
   );
-            }
-          
+}

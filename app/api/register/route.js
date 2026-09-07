@@ -1,12 +1,22 @@
 import { query } from "@/lib/db";
 import { generateOtp, sendOtpEmail } from "@/lib/mailer";
+import { sendWhatsappOtp, normalizePhone } from "@/lib/whatsapp";
 
 export async function POST(req) {
   try {
-    const { email } = await req.json();
+    const { email, otpMethod, phone } = await req.json();
 
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
       return Response.json({ error: "Email tidak valid" }, { status: 400 });
+    }
+
+    const method = otpMethod === "whatsapp" ? "whatsapp" : "email";
+    let normalizedPhone = null;
+    if (method === "whatsapp") {
+      if (!phone || phone.trim().replace(/\D/g, "").length < 9) {
+        return Response.json({ error: "Nomor WhatsApp tidak valid" }, { status: 400 });
+      }
+      normalizedPhone = normalizePhone(phone);
     }
 
     const existing = await query(
@@ -24,16 +34,25 @@ export async function POST(req) {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await query(
-      "insert into otp_codes (email, code, purpose, expires_at) values ($1, $2, 'register', $3)",
-      [email, code, expiresAt]
+      "insert into otp_codes (email, phone, code, purpose, method, expires_at) values ($1, $2, $3, 'register', $4, $5)",
+      [email, normalizedPhone, code, method, expiresAt]
     );
 
     try {
-      await sendOtpEmail(email, code);
+      if (method === "whatsapp") {
+        await sendWhatsappOtp(normalizedPhone, code);
+      } else {
+        await sendOtpEmail(email, code);
+      }
     } catch (e) {
-      console.error("Gagal kirim email OTP:", e);
+      console.error("Gagal kirim OTP:", e);
       return Response.json(
-        { error: "Gagal mengirim email. Cek konfigurasi Resend/domain pengirim." },
+        {
+          error:
+            method === "whatsapp"
+              ? "Gagal mengirim WhatsApp. Cek nomor atau coba lagi."
+              : "Gagal mengirim email. Cek konfigurasi Resend/domain pengirim.",
+        },
         { status: 500 }
       );
     }

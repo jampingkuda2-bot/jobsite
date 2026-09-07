@@ -1,5 +1,6 @@
 import { query } from "@/lib/db";
 import { generateOtp, sendResetOtpEmail } from "@/lib/mailer";
+import { sendWhatsappOtp } from "@/lib/whatsapp";
 
 export async function POST(req) {
   try {
@@ -10,7 +11,7 @@ export async function POST(req) {
 
     const id = identifier.trim();
     const userRes = await query(
-      "select id, email, username from users where (username = $1 or email = $1) and is_verified = true",
+      "select id, email, username, whatsapp_number, whatsapp_verified from users where (username = $1 or email = $1) and is_verified = true",
       [id]
     );
 
@@ -41,10 +42,22 @@ export async function POST(req) {
       );
     }
 
+    // Kalau user punya nomor WA yang sudah terverifikasi, kirim kode yang sama ke WA juga
+    // (best-effort, gagal kirim WA tidak menggagalkan reset karena email tetap terkirim)
+    let whatsappSent = false;
+    if (user.whatsapp_verified && user.whatsapp_number) {
+      try {
+        await sendWhatsappOtp(user.whatsapp_number, code);
+        whatsappSent = true;
+      } catch (e) {
+        console.error("Gagal kirim WA reset (diabaikan):", e.message);
+      }
+    }
+
     // Sensor sebagian email biar user tahu ke mana kode dikirim tanpa membocorkan penuh
     const maskedEmail = user.email.replace(/(.{2}).+(@.+)/, "$1***$2");
 
-    return Response.json({ ok: true, maskedEmail });
+    return Response.json({ ok: true, maskedEmail, whatsappSent });
   } catch (e) {
     console.error("Error di /api/forgot-password/request:", e);
     return Response.json(

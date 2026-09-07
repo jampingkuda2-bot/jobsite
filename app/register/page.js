@@ -9,6 +9,8 @@ export default function RegisterPage() {
   const router = useRouter();
   const [stage, setStage] = useState("email"); // email -> otp -> credentials
   const [email, setEmail] = useState("");
+  const [otpMethod, setOtpMethod] = useState("email"); // "email" | "whatsapp"
+  const [phone, setPhone] = useState("");
   const [digits, setDigits] = useState(Array(OTP_LENGTH).fill(""));
   const [verifying, setVerifying] = useState(false);
   const [username, setUsername] = useState("");
@@ -39,7 +41,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, otpMethod, phone }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -182,6 +184,42 @@ export default function RegisterPage() {
               placeholder="nama@email.com"
             />
           </div>
+
+          <div className="field">
+            <label>Kirim kode verifikasi lewat</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                className={otpMethod === "email" ? "" : "secondary"}
+                style={{ flex: 1 }}
+                onClick={() => setOtpMethod("email")}
+              >
+                📧 Email
+              </button>
+              <button
+                type="button"
+                className={otpMethod === "whatsapp" ? "" : "secondary"}
+                style={{ flex: 1 }}
+                onClick={() => setOtpMethod("whatsapp")}
+              >
+                💬 WhatsApp
+              </button>
+            </div>
+          </div>
+
+          {otpMethod === "whatsapp" && (
+            <div className="field">
+              <label>Nomor WhatsApp</label>
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="08xxxxxxxxxx"
+              />
+            </div>
+          )}
+
           <button disabled={loading}>
             {loading ? "Mengirim..." : "Kirim kode verifikasi"}
           </button>
@@ -191,7 +229,13 @@ export default function RegisterPage() {
       {stage === "otp" && (
         <div className="card">
           <p className="muted">
-            Kode verifikasi sudah dikirim ke <b>{email}</b>. Cek inbox atau folder spam.
+            Kode verifikasi sudah dikirim ke{" "}
+            {otpMethod === "whatsapp" ? (
+              <>WhatsApp <b>{phone}</b></>
+            ) : (
+              <>email <b>{email}</b>. Cek inbox atau folder spam</>
+            )}
+            .
           </p>
 
           <div className={`otp-wrap${verifying ? " verifying" : ""}`}>
@@ -241,7 +285,9 @@ export default function RegisterPage() {
 
       {stage === "credentials" && (
         <form onSubmit={finishRegister} className="card">
-          <p className="muted">Email terverifikasi. Buat username & password untuk login.</p>
+          <p className="muted">
+            {otpMethod === "whatsapp" ? "Nomor WhatsApp" : "Email"} terverifikasi. Buat username & password untuk login.
+          </p>
           <div className="field">
             <label>Username</label>
             <input
@@ -283,4 +329,5 @@ export default function RegisterPage() {
       </p>
     </div>
   );
-}
+                  }
+                    

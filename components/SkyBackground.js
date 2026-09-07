@@ -59,7 +59,7 @@ export default function SkyBackground() {
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: -1,
+        zIndex: 9999,
         overflow: "hidden",
         background: GRADIENTS[phase],
         transition: "background 3s ease",

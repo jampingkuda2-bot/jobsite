@@ -42,7 +42,7 @@ export async function GET() {
 
     // Ambil data user terbaru (ambil semua kolom yang diperlukan)
     const userRes = await query(
-      `SELECT id, email, username, saldo, token_balance, withdrawable_balance, photo_url
+      `SELECT id, email, username, saldo, token_balance, withdrawable_balance, photo_url, whatsapp_number, whatsapp_verified
        FROM users WHERE id = $1`,
       [session.userId]
     );
@@ -149,6 +149,8 @@ export async function GET() {
         token_balance: Number(user.token_balance || 0),
         withdrawable_balance: Number(user.withdrawable_balance || 0),
         photo_url: user.photo_url || null,
+        whatsapp_number: user.whatsapp_number || null,
+        whatsapp_verified: user.whatsapp_verified || false,
       },
       tasks: tasksRes.rows,
       submissions: submissionsRes.rows,

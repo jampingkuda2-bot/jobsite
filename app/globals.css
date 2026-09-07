@@ -24,7 +24,6 @@
 }
 
 html {
-  /* Skala teks otomatis mengikuti lebar layar, dari HP kecil sampai tablet/desktop */
   font-size: clamp(15px, 1.4vw + 10px, 17px);
 }
 
@@ -118,8 +117,6 @@ p.muted, span.muted, div.muted {
   overflow-wrap: anywhere;
 }
 
-/* Biar baris baru (enter) yang diketik di deskripsi/catatan tetap kelihatan rapi,
-   tidak dirapel jadi satu baris panjang */
 .pre-wrap { white-space: pre-wrap; }
 
 .field { margin-bottom: 16px; }
@@ -150,8 +147,6 @@ p.muted, span.muted, div.muted {
   box-shadow: 0 0 0 3px rgba(61, 220, 151, 0.16);
 }
 
-/* Checkbox harus dikecualikan dari gaya input teks di atas, biar tetap
-   berbentuk kotak centang normal dan bisa dicentang lebih dari satu sekaligus */
 .field input[type="checkbox"] {
   all: revert;
   -webkit-appearance: checkbox;
@@ -301,8 +296,6 @@ nav.admin-nav a.active {
 }
 .link-btn:active { transform: none; opacity: 0.6; }
 
-/* Animasi OTP: kotak-kotak digit "terbang" membentuk orbit lingkaran &
-   berubah hijau begitu kode terverifikasi berhasil */
 .otp-wrap {
   position: relative;
   display: flex;

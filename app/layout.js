@@ -1,7 +1,7 @@
 import "./globals.css";
 import { query } from "@/lib/db";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
-import SkyBackground from "@/components/SkyBackround";
+import SkyBackground from "@/components/SkyBackground"; // perbaiki typo
 
 function cloudinaryIconUrl(url, size) {
   if (!url) return null;
@@ -46,11 +46,11 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning>
       <body>
+        <SkyBackground />  {/* letakkan di paling awal biar jadi background */}
         {children}
         <ServiceWorkerRegister />
-        <SkyBackground />
       </body>
     </html>
   );

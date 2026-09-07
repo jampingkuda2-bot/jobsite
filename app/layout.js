@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./SkyBackground";
 import { query } from "@/lib/db";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
@@ -49,6 +50,7 @@ export default function RootLayout({ children }) {
       <body>
         {children}
         <ServiceWorkerRegister />
+        <SkyBackground />
       </body>
     </html>
   );

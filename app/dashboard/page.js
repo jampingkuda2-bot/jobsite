@@ -1,20 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import EnableNotificationsButton from "@/components/EnableNotificationsButton";
 import InstallPwaButton from "@/components/InstallPwaButton";
+import { countUp, staggerIn, pulse } from "@/lib/animations";
 
 function formatRupiah(n) {
   return "Rp" + Number(n).toLocaleString("id-ID");
+}
+
+// Kecilin ukuran foto Cloudinary sebelum ditampilkan (otomatis pilih format
+// paling ringan yang didukung browser + kompresi otomatis) biar avatar-avatar
+// kecil ini nggak diam-diam narik file beresolusi penuh dan bikin halaman berat.
+function optimizedPhoto(url, size) {
+  if (!url || !url.includes("/upload/")) return url;
+  return url.replace("/upload/", `/upload/w_${size * 2},h_${size * 2},c_fill,f_auto,q_auto/`);
 }
 
 function Avatar({ url, name, size = 32 }) {
   if (url) {
     return (
       <img
-        src={url}
+        src={optimizedPhoto(url, size)}
         alt={name || "avatar"}
+        loading="lazy"
         style={{
           width: size,
           height: size,
@@ -99,6 +109,12 @@ export default function DashboardPage() {
   const [activityTab, setActivityTab] = useState("peringkat");
   const [showAllTasks, setShowAllTasks] = useState(false);
 
+  const totalSaldoRef = useRef(null);
+  const terkunciRef = useRef(null);
+  const tersediaRef = useRef(null);
+  const checkinBtnRef = useRef(null);
+  const animatedOnceRef = useRef(false);
+
   async function load() {
     try {
       const res = await fetch("/api/me");
@@ -129,6 +145,18 @@ export default function DashboardPage() {
       .catch(() => setLeaderboard([]));
   }, []);
 
+  // Animasi jalan sekali aja pas data pertama kali berhasil dimuat —
+  // biar nggak ngulang tiap kali data di-refresh (misal habis check-in).
+  useEffect(() => {
+    if (!data || data.error || animatedOnceRef.current) return;
+    animatedOnceRef.current = true;
+
+    countUp(totalSaldoRef.current, { to: data.user.saldo ?? 0, formatter: formatRupiah });
+    countUp(terkunciRef.current, { to: data.user.total_locked ?? 0, formatter: formatRupiah });
+    countUp(tersediaRef.current, { to: data.user.available_balance ?? 0, formatter: formatRupiah });
+    staggerIn(".wrap > .card, .wrap > .balance-card");
+  }, [data]);
+
   async function doCheckin() {
     setCheckinBusy(true);
     setError("");
@@ -139,6 +167,7 @@ export default function DashboardPage() {
         setError(d.error || "Gagal check-in");
         return;
       }
+      pulse(checkinBtnRef.current);
       load();
     } catch (e) {
       setError("Tidak bisa terhubung ke server.");
@@ -199,7 +228,7 @@ export default function DashboardPage() {
         <p className="muted" style={{ marginBottom: 12 }}>
           Klik sekali sehari, dapat <b style={{ color: "var(--accent)" }}>Rp200</b> gratis.
         </p>
-        <button onClick={doCheckin} disabled={checkinBusy || data.checkedInToday}>
+        <button ref={checkinBtnRef} onClick={doCheckin} disabled={checkinBusy || data.checkedInToday}>
           {data.checkedInToday ? "Sudah check-in hari ini" : checkinBusy ? "Memproses..." : "Check-in sekarang"}
         </button>
         {error && <div className="error" style={{ marginTop: 12 }}>{error}</div>}
@@ -209,17 +238,17 @@ export default function DashboardPage() {
       <div className="balance-card">
         <div>
           <div className="balance-label">Total Saldo</div>
-          <div className="balance-value">{formatRupiah(data.user.saldo ?? 0)}</div>
+          <div className="balance-value" ref={totalSaldoRef}>{formatRupiah(data.user.saldo ?? 0)}</div>
         </div>
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, marginTop: 4 }}>
           <div className="balance-label">Terkunci</div>
-          <div className="balance-value" style={{ color: "var(--muted)" }}>
+          <div className="balance-value" ref={terkunciRef} style={{ color: "var(--muted)" }}>
             {formatRupiah(data.user.total_locked ?? 0)}
           </div>
         </div>
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12, marginTop: 4 }}>
           <div className="balance-label">Tersedia (bisa ditarik & dikunci)</div>
-          <div className="balance-value" style={{ color: "var(--accent)" }}>
+          <div className="balance-value" ref={tersediaRef} style={{ color: "var(--accent)" }}>
             {formatRupiah(data.user.available_balance ?? 0)}
           </div>
         </div>
@@ -412,4 +441,5 @@ export default function DashboardPage() {
       </div>
     </div>
   );
-}
+            }
+                

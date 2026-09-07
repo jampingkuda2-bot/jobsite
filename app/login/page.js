@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,7 +17,7 @@ export default function LoginPage() {
     const res = await fetch("/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ identifier, password }),
     });
     const data = await res.json();
     setLoading(false);
@@ -35,8 +35,8 @@ export default function LoginPage() {
 
       <form onSubmit={submit} className="card">
         <div className="field">
-          <label>Username</label>
-          <input required value={username} onChange={(e) => setUsername(e.target.value)} />
+          <label>Username atau Email</label>
+          <input required value={identifier} onChange={(e) => setIdentifier(e.target.value)} />
         </div>
         <div className="field">
           <label>Password</label>

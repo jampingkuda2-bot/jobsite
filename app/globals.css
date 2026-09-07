@@ -401,3 +401,50 @@ nav.admin-nav a.active {
   .row { flex-direction: column; }
   .row > * { min-width: 0; }
 }
+
+/* ================= TAMBAHAN: Background langit dinamis ================= */
+/* Bintang: dibuat dari banyak box-shadow titik kecil biar ringan (1 elemen doang) */
+.sky-stars {
+  background-image:
+    radial-gradient(1.5px 1.5px at 10% 15%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 25% 40%, #fff, transparent),
+    radial-gradient(1px 1px at 40% 10%, #fff, transparent),
+    radial-gradient(2px 2px at 55% 30%, #fff, transparent),
+    radial-gradient(1px 1px at 70% 55%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 85% 20%, #fff, transparent),
+    radial-gradient(1px 1px at 15% 65%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 33% 75%, #fff, transparent),
+    radial-gradient(1px 1px at 60% 80%, #fff, transparent),
+    radial-gradient(2px 2px at 90% 60%, #fff, transparent),
+    radial-gradient(1px 1px at 48% 48%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 78% 85%, #fff, transparent);
+  background-repeat: no-repeat;
+  animation: sky-twinkle 4s ease-in-out infinite alternate;
+}
+@keyframes sky-twinkle {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
+}
+
+.sky-cloud {
+  position: absolute;
+  left: -30%;
+  width: 220px;
+  height: 60px;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 70%);
+  border-radius: 50%;
+  filter: blur(6px);
+  animation-name: sky-drift;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+@keyframes sky-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(140vw); }
+}
+
+/* Pastikan konten halaman tetap kelihatan di atas background langit */
+.wrap, .wrap-wide {
+  position: relative;
+  z-index: 1;
+}

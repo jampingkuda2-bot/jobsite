@@ -12,7 +12,7 @@ export async function POST(req) {
   }
 
   const otpRes = await query(
-    `select id from otp_codes
+    `select id, phone from otp_codes
      where email = $1 and code = $2 and purpose = 'register'
        and used = false and expires_at > now()
      order by created_at desc limit 1`,
@@ -73,6 +73,9 @@ export async function POST(req) {
   }
 
   const hash = await bcrypt.hash(password, 10);
+  // Kalau tadi daftar pakai OTP WhatsApp, baris otp_codes ini nyimpen nomornya —
+  // langsung dianggap terverifikasi karena OTP-nya sudah benar dikirim & diketik dengan benar.
+  const phone = otpRes.rows[0].phone;
 
   const existing = await query("select id from users where email = $1", [
     email,
@@ -82,14 +85,19 @@ export async function POST(req) {
   if (existing.rows.length > 0) {
     userId = existing.rows[0].id;
     await query(
-      "update users set username = $1, password_hash = $2, is_verified = true, referred_by = coalesce(referred_by, $4) where id = $3",
-      [username, hash, userId, referredBy]
+      `update users set username = $1, password_hash = $2, is_verified = true,
+              referred_by = coalesce(referred_by, $4),
+              whatsapp_number = coalesce($5, whatsapp_number),
+              whatsapp_verified = whatsapp_verified or ($5 is not null)
+       where id = $3`,
+      [username, hash, userId, referredBy, phone]
     );
   } else {
     const inserted = await query(
-      `insert into users (email, username, password_hash, is_verified, referred_by)
-       values ($1, $2, $3, true, $4) returning id`,
-      [email, username, hash, referredBy]
+      `insert into users (email, username, password_hash, is_verified, referred_by, whatsapp_number, whatsapp_verified)
+       values ($1, $2, $3, true, $4, $5, ($5 is not null))
+       returning id`,
+      [email, username, hash, referredBy, phone]
     );
     userId = inserted.rows[0].id;
   }

@@ -6,7 +6,7 @@ import { uploadProfilePhoto } from "@/lib/uploadProfilePhoto";
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [tab, setTab] = useState("profil"); // "profil" | "password"
+  const [tab, setTab] = useState("profil"); // "profil" | "password" | "whatsapp"
   const [data, setData] = useState(null);
   const [username, setUsername] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
@@ -19,6 +19,11 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [savingPassword, setSavingPassword] = useState(false);
+
+  const [waPhone, setWaPhone] = useState("");
+  const [waOtpSent, setWaOtpSent] = useState(false);
+  const [waCode, setWaCode] = useState("");
+  const [waBusy, setWaBusy] = useState(false);
 
   const fileRef = useRef(null);
 
@@ -127,6 +132,59 @@ export default function ProfilePage() {
     }
   }
 
+  async function requestWaOtp(e) {
+    e.preventDefault();
+    setError("");
+    setNotice("");
+    setWaBusy(true);
+    try {
+      const res = await fetch("/api/profile/whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "request", phone: waPhone }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || "Gagal mengirim kode");
+        return;
+      }
+      setWaOtpSent(true);
+      setNotice("Kode verifikasi dikirim ke WhatsApp kamu.");
+    } catch (err) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setWaBusy(false);
+    }
+  }
+
+  async function verifyWaOtp(e) {
+    e.preventDefault();
+    setError("");
+    setNotice("");
+    setWaBusy(true);
+    try {
+      const res = await fetch("/api/profile/whatsapp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "verify", phone: waPhone, code: waCode }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(d.error || "Kode salah atau kedaluwarsa");
+        return;
+      }
+      setNotice("Nomor WhatsApp berhasil dikaitkan & terverifikasi.");
+      setWaOtpSent(false);
+      setWaCode("");
+      setWaPhone("");
+      load();
+    } catch (err) {
+      setError("Tidak bisa terhubung ke server.");
+    } finally {
+      setWaBusy(false);
+    }
+  }
+
   if (!data) return <div className="wrap"><p className="muted">Memuat...</p></div>;
 
   return (
@@ -191,19 +249,22 @@ export default function ProfilePage() {
       {notice && <div className="success">{notice}</div>}
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ display: "flex", borderBottom: "1px solid var(--border)", overflowX: "auto" }}>
           <button
             type="button"
             onClick={() => setTab("profil")}
             style={{
               flex: 1,
+              minWidth: 90,
               padding: "14px 0",
               background: "transparent",
               border: "none",
               borderBottom: tab === "profil" ? "2px solid var(--accent)" : "2px solid transparent",
               color: tab === "profil" ? "var(--accent)" : "var(--muted)",
               fontWeight: 700,
+              fontSize: "0.9rem",
               cursor: "pointer",
+              whiteSpace: "nowrap",
             }}
           >
             Edit Profil
@@ -213,16 +274,38 @@ export default function ProfilePage() {
             onClick={() => setTab("password")}
             style={{
               flex: 1,
+              minWidth: 90,
               padding: "14px 0",
               background: "transparent",
               border: "none",
               borderBottom: tab === "password" ? "2px solid var(--accent)" : "2px solid transparent",
               color: tab === "password" ? "var(--accent)" : "var(--muted)",
               fontWeight: 700,
+              fontSize: "0.9rem",
               cursor: "pointer",
+              whiteSpace: "nowrap",
             }}
           >
             Ganti Password
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("whatsapp")}
+            style={{
+              flex: 1,
+              minWidth: 90,
+              padding: "14px 0",
+              background: "transparent",
+              border: "none",
+              borderBottom: tab === "whatsapp" ? "2px solid var(--accent)" : "2px solid transparent",
+              color: tab === "whatsapp" ? "var(--accent)" : "var(--muted)",
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            WhatsApp
           </button>
         </div>
 
@@ -293,9 +376,69 @@ export default function ProfilePage() {
               </button>
             </form>
           )}
+
+          {tab === "whatsapp" && (
+            <div>
+              {data.user.whatsapp_verified && data.user.whatsapp_number ? (
+                <div className="success" style={{ marginBottom: 16 }}>
+                  Nomor aktif: <b>{data.user.whatsapp_number}</b> (terverifikasi)
+                </div>
+              ) : (
+                <p className="muted" style={{ marginBottom: 16 }}>
+                  Belum ada nomor WhatsApp terkait. Tambahkan biar bisa dapat OTP & notifikasi lewat WA.
+                </p>
+              )}
+
+              {!waOtpSent ? (
+                <form onSubmit={requestWaOtp}>
+                  <div className="field">
+                    <label>{data.user.whatsapp_verified ? "Ganti nomor WhatsApp" : "Nomor WhatsApp"}</label>
+                    <input
+                      type="tel"
+                      required
+                      value={waPhone}
+                      onChange={(e) => setWaPhone(e.target.value)}
+                      placeholder="08xxxxxxxxxx"
+                    />
+                  </div>
+                  <button disabled={waBusy}>
+                    {waBusy ? "Mengirim..." : "Kirim kode verifikasi"}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={verifyWaOtp}>
+                  <p className="muted" style={{ marginBottom: 12 }}>
+                    Kode dikirim ke <b>{waPhone}</b>.
+                  </p>
+                  <div className="field">
+                    <label>Kode verifikasi</label>
+                    <input
+                      required
+                      inputMode="numeric"
+                      value={waCode}
+                      onChange={(e) => setWaCode(e.target.value.replace(/\D/g, ""))}
+                      placeholder="6 digit kode"
+                    />
+                  </div>
+                  <div className="row">
+                    <button disabled={waBusy}>
+                      {waBusy ? "Memverifikasi..." : "Verifikasi"}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => { setWaOtpSent(false); setWaCode(""); }}
+                    >
+                      Batal
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
-              }
-                    
+                    }
+                        

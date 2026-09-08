@@ -196,7 +196,7 @@ export default function AdminUsersPage() {
             placeholder="Cari username atau email..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            style={{ background: "var(--panel-2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 12px", color: "var(--text)" }}
+            style={{ background: "var(--panel-2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 12px", color: "var(--text)", flex: 1 }}
           />
           <button type="submit" style={{ width: 120 }}>Cari</button>
         </form>
@@ -229,55 +229,81 @@ export default function AdminUsersPage() {
         {users && users.length === 0 && !error && <p className="muted">Tidak ada pengguna.</p>}
         {users && users.length > 0 && (
           <div className="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th></th>
-                <th>Username</th>
-                <th>Email</th>
-                <th>Total</th>
-                <th>Terkunci</th>
-                <th>Tersedia</th>
-                <th>Deposit</th>
-                <th>Dari Tugas</th>
-                <th>Referral</th>
-                <th>Penarikan</th>
-                <th>Lock</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id}>
-                  <td><Avatar url={u.photo_url} name={u.username} /></td>
-                  <td>{u.username || <span className="muted">(belum lengkap)</span>}</td>
-                  <td>{u.email}</td>
-                  <td style={{ fontWeight: 700, color: "var(--accent)" }}>{formatRupiah(u.total_balance)}</td>
-                  <td style={{ color: "var(--warn)" }}>{formatRupiah(u.locked_balance)}</td>
-                  <td>{formatRupiah(u.available_balance)}</td>
-                  <td className="muted">{formatRupiah(u.total_deposit)}</td>
-                  <td className="muted">{formatRupiah(u.total_earned)}</td>
-                  <td className="muted">{formatRupiah(u.referral_bonus)}</td>
-                  <td className="muted">{formatRupiah(u.total_withdrawn)}</td>
-                  <td>
-                    {u.active_locks_count > 0 ? (
-                      <span className="badge pending">{u.active_locks_count}</span>
-                    ) : (
-                      <span className="muted">0</span>
-                    )}
-                  </td>
-                  <td>
-                    <button className="small secondary" onClick={() => setAdjustFor(u)}>
-                      Ubah
-                    </button>
-                  </td>
+            <table style={{ fontSize: "0.8rem", minWidth: 1100 }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left", padding: "8px 6px", whiteSpace: "nowrap" }}>User</th>
+                  <th style={{ textAlign: "left", padding: "8px 6px", whiteSpace: "nowrap" }}>Username</th>
+                  <th style={{ textAlign: "left", padding: "8px 6px", whiteSpace: "nowrap" }}>Email</th>
+                  <th style={{ textAlign: "right", padding: "8px 6px", whiteSpace: "nowrap" }}>Total</th>
+                  <th style={{ textAlign: "right", padding: "8px 6px", whiteSpace: "nowrap" }}>Terkunci</th>
+                  <th style={{ textAlign: "right", padding: "8px 6px", whiteSpace: "nowrap" }}>Tersedia</th>
+                  <th style={{ textAlign: "right", padding: "8px 6px", whiteSpace: "nowrap" }}>Deposit</th>
+                  <th style={{ textAlign: "right", padding: "8px 6px", whiteSpace: "nowrap" }}>Dari Tugas</th>
+                  <th style={{ textAlign: "right", padding: "8px 6px", whiteSpace: "nowrap" }}>Referral</th>
+                  <th style={{ textAlign: "right", padding: "8px 6px", whiteSpace: "nowrap" }}>Penarikan</th>
+                  <th style={{ textAlign: "center", padding: "8px 6px", whiteSpace: "nowrap" }}>Lock</th>
+                  <th style={{ textAlign: "center", padding: "8px 6px", whiteSpace: "nowrap" }}>Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.id}>
+                    <td style={{ padding: "6px 6px" }}>
+                      <Avatar url={u.photo_url} name={u.username} size={28} />
+                    </td>
+                    <td style={{ padding: "6px 6px", fontWeight: 600 }}>
+                      {u.username || <span className="muted">(belum)</span>}
+                    </td>
+                    <td style={{ padding: "6px 6px", fontSize: "0.75rem", color: "var(--muted)" }}>
+                      {u.email}
+                    </td>
+                    <td style={{ padding: "6px 6px", textAlign: "right", fontWeight: 700, color: "var(--accent)" }}>
+                      {formatRupiah(u.total_balance)}
+                    </td>
+                    <td style={{ padding: "6px 6px", textAlign: "right", color: "var(--warn)" }}>
+                      {formatRupiah(u.locked_balance)}
+                    </td>
+                    <td style={{ padding: "6px 6px", textAlign: "right" }}>
+                      {formatRupiah(u.available_balance)}
+                    </td>
+                    <td style={{ padding: "6px 6px", textAlign: "right", color: "var(--muted)" }}>
+                      {formatRupiah(u.total_deposit)}
+                    </td>
+                    <td style={{ padding: "6px 6px", textAlign: "right", color: "var(--muted)" }}>
+                      {formatRupiah(u.total_earned)}
+                    </td>
+                    <td style={{ padding: "6px 6px", textAlign: "right", color: "var(--muted)" }}>
+                      {formatRupiah(u.referral_bonus)}
+                    </td>
+                    <td style={{ padding: "6px 6px", textAlign: "right", color: "var(--muted)" }}>
+                      {formatRupiah(u.total_withdrawn)}
+                    </td>
+                    <td style={{ padding: "6px 6px", textAlign: "center" }}>
+                      {u.active_locks_count > 0 ? (
+                        <span className="badge pending" style={{ fontSize: "0.7rem" }}>
+                          {u.active_locks_count}
+                        </span>
+                      ) : (
+                        <span className="muted" style={{ fontSize: "0.7rem" }}>0</span>
+                      )}
+                    </td>
+                    <td style={{ padding: "6px 6px", textAlign: "center" }}>
+                      <button
+                        className="small secondary"
+                        onClick={() => setAdjustFor(u)}
+                        style={{ fontSize: "0.7rem", padding: "4px 10px" }}
+                      >
+                        Ubah
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
     </div>
   );
-          }
+}

@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import AdminNav from "./AdminNav";
+import AdminNav from "../AdminNav";
 import EnableNotificationsButton from "@/components/EnableNotificationsButton";
 import AppIconUploader from "@/components/AppIconUploader";
 
 function formatRupiah(n) {
+  if (!n && n !== 0) return "Rp0";
   return "Rp" + Number(n).toLocaleString("id-ID");
 }
 
@@ -204,7 +205,7 @@ export default function AdminUsersPage() {
       {adjustFor && (
         <div className="card">
           <h2>Ubah saldo — {adjustFor.username}</h2>
-          <p className="muted">Saldo saat ini: {formatRupiah(adjustFor.saldo)}</p>
+          <p className="muted">Saldo saat ini: {formatRupiah(adjustFor.total_balance || 0)}</p>
           <form onSubmit={submitAdjust}>
             <div className="field">
               <label>Jumlah (isi minus untuk mengurangi, contoh: -5000)</label>
@@ -234,7 +235,14 @@ export default function AdminUsersPage() {
                 <th></th>
                 <th>Username</th>
                 <th>Email</th>
-                <th>Saldo</th>
+                <th>Total</th>
+                <th>Terkunci</th>
+                <th>Tersedia</th>
+                <th>Deposit</th>
+                <th>Dari Tugas</th>
+                <th>Referral</th>
+                <th>Penarikan</th>
+                <th>Lock</th>
                 <th></th>
               </tr>
             </thead>
@@ -244,10 +252,23 @@ export default function AdminUsersPage() {
                   <td><Avatar url={u.photo_url} name={u.username} /></td>
                   <td>{u.username || <span className="muted">(belum lengkap)</span>}</td>
                   <td>{u.email}</td>
-                  <td>{formatRupiah(u.saldo)}</td>
+                  <td style={{ fontWeight: 700, color: "var(--accent)" }}>{formatRupiah(u.total_balance)}</td>
+                  <td style={{ color: "var(--warn)" }}>{formatRupiah(u.locked_balance)}</td>
+                  <td>{formatRupiah(u.available_balance)}</td>
+                  <td className="muted">{formatRupiah(u.total_deposit)}</td>
+                  <td className="muted">{formatRupiah(u.total_earned)}</td>
+                  <td className="muted">{formatRupiah(u.referral_bonus)}</td>
+                  <td className="muted">{formatRupiah(u.total_withdrawn)}</td>
+                  <td>
+                    {u.active_locks_count > 0 ? (
+                      <span className="badge pending">{u.active_locks_count}</span>
+                    ) : (
+                      <span className="muted">0</span>
+                    )}
+                  </td>
                   <td>
                     <button className="small secondary" onClick={() => setAdjustFor(u)}>
-                      Ubah saldo
+                      Ubah
                     </button>
                   </td>
                 </tr>
@@ -259,4 +280,4 @@ export default function AdminUsersPage() {
       </div>
     </div>
   );
-}
+          }

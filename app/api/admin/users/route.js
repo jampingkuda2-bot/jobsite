@@ -3,23 +3,83 @@ import { getAdminSession } from "@/lib/auth";
 
 export async function GET(req) {
   try {
-    const admin = getAdminSession();
+    const admin = await getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
     const q = searchParams.get("q") || "";
 
     const res = await query(
-      `select id, email, username, saldo, is_verified, created_at, photo_url
-       from users
-       where username ilike $1 or email ilike $1
-       order by created_at desc
-       limit 200`,
+      `SELECT 
+        u.id,
+        u.email,
+        u.username,
+        u.created_at,
+        -- Total saldo (gabungan token + withdrawable)
+        COALESCE(u.token_balance, 0) + COALESCE(u.withdrawable_balance, 0) AS total_balance,
+        -- Saldo terkunci aktif
+        COALESCE((
+          SELECT SUM(amount) 
+          FROM balance_locks 
+          WHERE user_id = u.id AND status = 'active'
+        ), 0) AS locked_balance,
+        -- Saldo tersedia
+        (COALESCE(u.token_balance, 0) + COALESCE(u.withdrawable_balance, 0)) 
+        - COALESCE((
+          SELECT SUM(amount) 
+          FROM balance_locks 
+          WHERE user_id = u.id AND status = 'active'
+        ), 0) AS available_balance,
+        -- Total deposit disetujui
+        COALESCE((
+          SELECT SUM(amount) 
+          FROM deposit_requests 
+          WHERE user_id = u.id AND status = 'approved'
+        ), 0) AS total_deposit,
+        -- Total reward dari tugas disetujui
+        COALESCE((
+          SELECT SUM(t.reward)
+          FROM task_submissions s
+          JOIN tasks t ON t.id = s.task_id
+          WHERE s.user_id = u.id AND s.status = 'approved'
+        ), 0) AS total_earned,
+        -- Total bonus referral
+        COALESCE((
+          SELECT SUM(amount)
+          FROM balance_adjustments
+          WHERE user_id = u.id AND reason = 'Bonus referral'
+        ), 0) AS referral_bonus,
+        -- Total penarikan selesai
+        COALESCE((
+          SELECT SUM(amount) 
+          FROM withdrawals 
+          WHERE user_id = u.id AND status = 'done'
+        ), 0) AS total_withdrawn,
+        -- Jumlah lock aktif
+        COALESCE((
+          SELECT COUNT(*) 
+          FROM balance_locks 
+          WHERE user_id = u.id AND status = 'active'
+        ), 0) AS active_locks_count
+       FROM users u
+       WHERE u.username ILIKE $1 OR u.email ILIKE $1
+       ORDER BY u.created_at DESC
+       LIMIT 200`,
       [`%${q}%`]
     );
 
     return Response.json({
-      users: res.rows.map((u) => ({ ...u, saldo: Number(u.saldo) })),
+      users: res.rows.map((u) => ({
+        ...u,
+        total_balance: Number(u.total_balance),
+        locked_balance: Number(u.locked_balance),
+        available_balance: Number(u.available_balance),
+        total_deposit: Number(u.total_deposit),
+        total_earned: Number(u.total_earned),
+        referral_bonus: Number(u.referral_bonus),
+        total_withdrawn: Number(u.total_withdrawn),
+        active_locks_count: Number(u.active_locks_count),
+      })),
     });
   } catch (e) {
     console.error("Error di GET /api/admin/users:", e);
@@ -30,7 +90,7 @@ export async function GET(req) {
 // Tambah atau kurangi saldo user secara manual
 export async function POST(req) {
   try {
-    const admin = getAdminSession();
+    const admin = await getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
     const { userId, amount, reason } = await req.json();
@@ -40,23 +100,31 @@ export async function POST(req) {
       return Response.json({ error: "Data tidak lengkap" }, { status: 400 });
     }
 
-    const userRes = await query("select saldo from users where id = $1", [userId]);
+    // Cek user
+    const userRes = await query("SELECT token_balance, withdrawable_balance FROM users WHERE id = $1", [userId]);
     if (userRes.rows.length === 0) {
       return Response.json({ error: "User tidak ditemukan" }, { status: 404 });
     }
 
-    const newSaldo = Number(userRes.rows[0].saldo) + amt;
-    if (newSaldo < 0) {
+    // Tentukan mau tambah ke saldo mana? Saya asumsikan tambah ke withdrawable_balance (bisa ditarik)
+    // Kalo mau ubah, ganti kolomnya jadi 'token_balance' atau 'saldo'
+    const currentBalance = Number(userRes.rows[0].withdrawable_balance);
+    const newBalance = currentBalance + amt;
+
+    if (newBalance < 0) {
       return Response.json({ error: "Saldo tidak boleh minus" }, { status: 400 });
     }
 
-    await query("update users set saldo = $1 where id = $2", [newSaldo, userId]);
     await query(
-      "insert into balance_adjustments (user_id, amount, reason) values ($1, $2, $3)",
-      [userId, amt, reason || null]
+      "UPDATE users SET withdrawable_balance = $1 WHERE id = $2",
+      [newBalance, userId]
+    );
+    await query(
+      "INSERT INTO balance_adjustments (user_id, amount, reason) VALUES ($1, $2, $3)",
+      [userId, amt, reason || `Admin adjustment: ${reason || "Manual"}`]
     );
 
-    return Response.json({ ok: true, saldo: newSaldo });
+    return Response.json({ ok: true, saldo: newBalance });
   } catch (e) {
     console.error("Error di POST /api/admin/users:", e);
     return Response.json({ error: "Gagal menyimpan. Cek koneksi database." }, { status: 500 });

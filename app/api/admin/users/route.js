@@ -15,22 +15,23 @@ export async function GET(req) {
         u.email,
         u.username,
         u.created_at,
-        -- Total saldo (gabungan token + withdrawable)
-        COALESCE(u.token_balance, 0) + COALESCE(u.withdrawable_balance, 0) AS total_balance,
+        -- Total saldo (sumber tunggal: users.saldo, sama kayak yang dipakai
+        -- dashboard user, fitur kunci saldo, approval tugas, dan penarikan)
+        COALESCE(u.saldo, 0) AS total_balance,
         -- Saldo terkunci aktif
         COALESCE((
           SELECT SUM(amount) 
           FROM balance_locks 
           WHERE user_id = u.id AND status = 'active'
         ), 0) AS locked_balance,
-        -- Saldo tersedia
-        (COALESCE(u.token_balance, 0) + COALESCE(u.withdrawable_balance, 0)) 
+        -- Saldo tersedia = saldo - terkunci (rumus sama persis kayak /api/me)
+        COALESCE(u.saldo, 0) 
         - COALESCE((
           SELECT SUM(amount) 
           FROM balance_locks 
           WHERE user_id = u.id AND status = 'active'
         ), 0) AS available_balance,
-        -- Total deposit disetujui
+        -- Total deposit disetujui (info tambahan, saldo token terpisah)
         COALESCE((
           SELECT SUM(amount) 
           FROM deposit_requests 
@@ -101,14 +102,14 @@ export async function POST(req) {
     }
 
     // Cek user
-    const userRes = await query("SELECT token_balance, withdrawable_balance FROM users WHERE id = $1", [userId]);
+    const userRes = await query("SELECT saldo FROM users WHERE id = $1", [userId]);
     if (userRes.rows.length === 0) {
       return Response.json({ error: "User tidak ditemukan" }, { status: 404 });
     }
 
-    // Tentukan mau tambah ke saldo mana? Saya asumsikan tambah ke withdrawable_balance (bisa ditarik)
-    // Kalo mau ubah, ganti kolomnya jadi 'token_balance' atau 'saldo'
-    const currentBalance = Number(userRes.rows[0].withdrawable_balance);
+    // PENTING: sesuaikan users.saldo, kolom yang sama dipakai dashboard user,
+    // fitur kunci saldo, approval tugas, dan penarikan (bukan withdrawable_balance)
+    const currentBalance = Number(userRes.rows[0].saldo);
     const newBalance = currentBalance + amt;
 
     if (newBalance < 0) {
@@ -116,7 +117,7 @@ export async function POST(req) {
     }
 
     await query(
-      "UPDATE users SET withdrawable_balance = $1 WHERE id = $2",
+      "UPDATE users SET saldo = $1 WHERE id = $2",
       [newBalance, userId]
     );
     await query(

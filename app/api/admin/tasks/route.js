@@ -98,14 +98,31 @@ export async function PATCH(req) {
   }
 }
 
+// Hapus tugas. Ditolak kalau tugas ini sudah punya riwayat yang disetujui,
+// supaya riwayat & leaderboard user tidak ikut hilang (task_submissions
+// nempel ke tasks.id, jadi hapus tugas = hapus juga riwayatnya).
+// Kalau tugas sudah tidak dipakai lagi, nonaktifkan saja (is_active = false)
+// lewat PATCH, jangan dihapus.
 export async function DELETE(req) {
   try {
     const admin = getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
     const { id } = await req.json();
-    await query("delete from tasks where id = $1", [id]);
+    if (!id) return Response.json({ error: "ID wajib diisi" }, { status: 400 });
 
+    const cek = await query(
+      "select count(*) from task_submissions where task_id = $1 and status = 'approved'",
+      [id]
+    );
+    if (Number(cek.rows[0].count) > 0) {
+      return Response.json(
+        { error: "Tugas ini punya riwayat yang sudah disetujui, tidak bisa dihapus. Nonaktifkan saja lewat tombol edit." },
+        { status: 400 }
+      );
+    }
+
+    await query("delete from tasks where id = $1", [id]);
     return Response.json({ ok: true });
   } catch (e) {
     console.error("Error di DELETE /api/admin/tasks:", e);

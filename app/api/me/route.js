@@ -51,7 +51,7 @@ export async function GET() {
     }
     const user = userRes.rows[0];
 
-    // ================= TAMBAHAN: Hitung total lock aktif =================
+    // ================= Hitung total lock aktif =================
     const lockedRes = await query(
       `SELECT COALESCE(SUM(amount), 0)::BIGINT AS total_locked
        FROM balance_locks
@@ -59,7 +59,13 @@ export async function GET() {
       [user.id]
     );
     const totalLocked = Number(lockedRes.rows[0].total_locked);
-    const availableBalance = Number(user.saldo) - totalLocked;
+
+    // PATCH: saldo sudah TIDAK termasuk yang dikunci (karena lock mengurangi saldo).
+    // Jadi:
+    //   - available_balance = saldo (bisa langsung dipakai/tarik)
+    //   - saldo (total)     = saldo + total_locked (kekayaan keseluruhan)
+    const availableBalance = Number(user.saldo);
+    const totalSaldo = availableBalance + totalLocked;
 
     // Ambil daftar tugas tersedia
     const tasksRes = await query(
@@ -132,7 +138,7 @@ export async function GET() {
       [user.id]
     );
 
-    // ================= TAMBAHAN: Status check-in hari ini =================
+    // ================= Status check-in hari ini =================
     const checkinRes = await query(
       "select id from daily_checkins where user_id = $1 and checkin_date = current_date",
       [user.id]
@@ -143,7 +149,7 @@ export async function GET() {
       user: {
         email: user.email,
         username: user.username,
-        saldo: Number(user.saldo),
+        saldo: totalSaldo,
         total_locked: totalLocked,
         available_balance: availableBalance,
         token_balance: Number(user.token_balance || 0),

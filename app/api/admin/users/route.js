@@ -15,22 +15,20 @@ export async function GET(req) {
         u.email,
         u.username,
         u.created_at,
-        -- Total saldo (sumber tunggal: users.saldo, sama kayak yang dipakai
-        -- dashboard user, fitur kunci saldo, approval tugas, dan penarikan)
-        COALESCE(u.saldo, 0) AS total_balance,
+        -- PATCH: Saldo tersedia = u.saldo langsung (karena lock SUDAH mengurangi saldo)
+        COALESCE(u.saldo, 0) AS available_balance,
         -- Saldo terkunci aktif
         COALESCE((
           SELECT SUM(amount) 
           FROM balance_locks 
           WHERE user_id = u.id AND status = 'active'
         ), 0) AS locked_balance,
-        -- Saldo tersedia = saldo - terkunci (rumus sama persis kayak /api/me)
-        COALESCE(u.saldo, 0) 
-        - COALESCE((
+        -- PATCH: Total saldo = saldo + terkunci (kekayaan keseluruhan)
+        COALESCE(u.saldo, 0) + COALESCE((
           SELECT SUM(amount) 
           FROM balance_locks 
           WHERE user_id = u.id AND status = 'active'
-        ), 0) AS available_balance,
+        ), 0) AS total_balance,
         -- Total deposit disetujui (info tambahan, saldo token terpisah)
         COALESCE((
           SELECT SUM(amount) 

@@ -4,7 +4,7 @@ import { sendPushToUser } from "@/lib/push";
 
 export async function GET() {
   try {
-    const admin = await getAdminSession(); // tambahkan await
+    const admin = await getAdminSession();
     if (!admin) return Response.json({ error: "Tidak diizinkan" }, { status: 401 });
 
     const pendingRes = await query(
@@ -75,9 +75,10 @@ export async function POST(req) {
           "UPDATE task_submissions SET status = 'approved', reviewed_at = now() WHERE id = $1",
           [submissionId]
         );
-        // Tambah reward ke withdrawable_balance (bukan saldo)
+
+        // PATCH: Tambah reward ke saldo utama (kolom yang dibaca /api/me & /api/withdraw)
         await query(
-          "UPDATE users SET withdrawable_balance = withdrawable_balance + $1 WHERE id = $2",
+          "UPDATE users SET saldo = saldo + $1 WHERE id = $2",
           [sub.reward, sub.user_id]
         );
 
@@ -90,8 +91,10 @@ export async function POST(req) {
         if (referrerInfo && referrerInfo.referred_by && !referrerInfo.referral_reward_given) {
           // Lock referrer
           await query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [referrerInfo.referred_by]);
+
+          // PATCH: Tambah bonus referral ke saldo utama juga
           await query(
-            "UPDATE users SET withdrawable_balance = withdrawable_balance + 800 WHERE id = $1",
+            "UPDATE users SET saldo = saldo + 800 WHERE id = $1",
             [referrerInfo.referred_by]
           );
           await query(
@@ -114,7 +117,7 @@ export async function POST(req) {
       await query("COMMIT");
     } catch (err) {
       await query("ROLLBACK");
-      throw err; // lempar ke catch luar
+      throw err;
     }
 
     // Kirim push notification ke user (diabaikan kalau gagal)

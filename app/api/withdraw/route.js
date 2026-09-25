@@ -38,13 +38,8 @@ export async function POST(req) {
       );
       if (userRes.rows.length === 0) throw new Error("User tidak ditemukan");
 
-      // Hitung total lock aktif
-      const lockedRes = await query(
-        "SELECT COALESCE(SUM(amount), 0)::BIGINT AS total_locked FROM balance_locks WHERE user_id = $1 AND status = 'active'",
-        [session.userId]
-      );
-      const totalLocked = Number(lockedRes.rows[0].total_locked);
-      const available = Number(userRes.rows[0].saldo) - totalLocked;
+      // PATCH: saldo sudah TIDAK termasuk yang dikunci, jadi langsung dipakai.
+      const available = Number(userRes.rows[0].saldo);
 
       if (amt > available) {
         throw new Error(`Saldo tersedia hanya Rp${available.toLocaleString("id-ID")}`);
